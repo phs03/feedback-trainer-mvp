@@ -1,21 +1,81 @@
-# Python
-venv/
-__pycache__/
-*.pyc
-
-# Node
-frontend/node_modules/
-frontend/dist/
-
-# OS
+# ============================
+#  GLOBAL
+# ============================
 .DS_Store
 Thumbs.db
-
-# Env / secrets
-.env
-.env.*
-.env.local
-
-# Logs
-logs/
 *.log
+*.tmp
+
+# ============================
+#  ROOT ENV FILES (절대 커밋 금지)
+# ============================
+.env
+.env.local
+.env.*.local
+
+# ============================
+#  PYTHON BACKEND
+# ============================
+# 가상환경
+venv/
+.venv/
+ENV/
+env/
+
+# Python 캐시
+__pycache__/
+*.py[cod]
+*.$py.class
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+coverage.xml
+
+# ============================
+#  NODE / FRONTEND (Vite + React)
+# ============================
+# Node modules
+node_modules/
+frontend/node_modules/
+
+# build 결과물
+dist/
+frontend/dist/
+
+# npm / yarn / pnpm lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Vite local env
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# ============================
+#  EDITOR / IDE
+# ============================
+.vscode/
+.idea/
+*.swp
+
+# ============================
+#  OS / ETC
+# ============================
+*.bak
+*.tmp
+
+# ============================
+#  BACKEND SPECIFIC
+# ============================
+backend/.env
+backend/.env.local
+backend/.env.*.local
+
+# Uploaded or temporary audio files (if you save locally)
+backend/uploads/
+*.webm
+*.wav
+*.mp3
