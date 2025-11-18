@@ -64,9 +64,6 @@ function App() {
           language: "ko",
           note: "ui test",
         },
-        // 🔹 화자 정보까지 같이 보냄 (나중에 백엔드 evidence에 사용)
-        segments: segments,
-        speaker_mapping: speakerMapping, // 🔹 SPEAKER_00 → "지도전문의"/"전공의" 정보 전달
       };
 
       const url = `${API_BASE}/feedback`;
@@ -87,7 +84,6 @@ function App() {
       }
 
       const data = await res.json();
-      console.log("[DEBUG] OSAD 응답:", data);
       setResult(data);
     } catch (err) {
       console.error(err);
@@ -152,6 +148,7 @@ function App() {
     const mediaRecorder = mediaRecorderRef.current;
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
       mediaRecorder.stop();
+      // 스트림 정리는 onstop에서 처리
     }
   }
 
@@ -252,34 +249,13 @@ function App() {
     new Set((segments || []).map((s) => s.speaker))
   );
 
-  // 🔹 index 정보가 붙은 segments (근거 매핑에 필요)
-  const indexedSegments = (segments || []).map((seg, idx) => ({
-    ...seg,
-    _idx: idx,
-  }));
-
   // 🔹 역할별 segment 분리
-  const traineeSegments = indexedSegments.filter(
+  const traineeSegments = (segments || []).filter(
     (seg) => speakerMapping[seg.speaker] === "전공의"
   );
-  const supervisorSegments = indexedSegments.filter(
+  const supervisorSegments = (segments || []).filter(
     (seg) => speakerMapping[seg.speaker] === "지도전문의"
   );
-
-  // 🔹 특정 segment index에 해당하는 OSAD 근거 태그들 구하기
-  function getOsadTagsForSegment(segIndex) {
-    if (!result || !result.evidence || !result.evidence.osad) return [];
-    const ev = result.evidence.osad;
-    const tags = [];
-    for (const [dim, indices] of Object.entries(ev)) {
-      if (Array.isArray(indices) && indices.includes(segIndex)) {
-        tags.push(dim);
-      }
-    }
-    return tags;
-  }
-
-  const osadEvidence = result?.evidence?.osad || {};
 
   return (
     <div
@@ -454,67 +430,39 @@ function App() {
               overflowY: "auto",
             }}
           >
-            {indexedSegments.map((seg) => {
-              const idx = seg._idx;
-              const tags = getOsadTagsForSegment(idx);
-              return (
+            {segments.map((seg, idx) => (
+              <div
+                key={idx}
+                style={{
+                  padding: "8px",
+                  borderRadius: "8px",
+                  border: "1px solid #e5e7eb",
+                  backgroundColor: "#ffffff",
+                  fontSize: "13px",
+                }}
+              >
                 <div
-                  key={idx}
                   style={{
-                    padding: "8px",
-                    borderRadius: "8px",
-                    border: "1px solid #e5e7eb",
-                    backgroundColor: "#ffffff",
-                    fontSize: "13px",
+                    marginBottom: "4px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    color: "#4b5563",
                   }}
                 >
-                  <div
-                    style={{
-                      marginBottom: "4px",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      color: "#4b5563",
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>
-                      {renderSpeakerLabel(seg.speaker)}
-                    </span>
-                    <span>
-                      {seg.start?.toFixed ? seg.start.toFixed(1) : seg.start} s
-                      {" ~ "}
-                      {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
-                    </span>
-                  </div>
-                  <div style={{ marginBottom: tags.length ? "4px" : 0 }}>
-                    {seg.text}
-                  </div>
-                  {tags.length > 0 && (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "4px",
-                        fontSize: "11px",
-                      }}
-                    >
-                      {tags.map((t) => (
-                        <span
-                          key={t}
-                          style={{
-                            padding: "2px 6px",
-                            borderRadius: "999px",
-                            backgroundColor: "#dbeafe",
-                            color: "#1d4ed8",
-                          }}
-                        >
-                          OSAD: {t}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <span style={{ fontWeight: 600 }}>
+                    {renderSpeakerLabel(seg.speaker)}
+                  </span>
+                  <span>
+                    {seg.start?.toFixed
+                      ? seg.start.toFixed(1)
+                      : seg.start}{" "}
+                    s ~{" "}
+                    {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
+                  </span>
                 </div>
-              );
-            })}
+                <div>{seg.text}</div>
+              </div>
+            ))}
           </div>
         </section>
       )}
@@ -592,62 +540,32 @@ function App() {
                     fontSize: "13px",
                   }}
                 >
-                  {traineeSegments.map((seg) => {
-                    const idx = seg._idx;
-                    const tags = getOsadTagsForSegment(idx);
-                    return (
+                  {traineeSegments.map((seg, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: "6px 8px",
+                        borderRadius: "8px",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #e5e7eb",
+                      }}
+                    >
                       <div
-                        key={idx}
                         style={{
-                          padding: "6px 8px",
-                          borderRadius: "8px",
-                          backgroundColor: "#ffffff",
-                          border: "1px solid #e5e7eb",
+                          marginBottom: "2px",
+                          fontSize: "12px",
+                          color: "#6b7280",
                         }}
                       >
-                        <div
-                          style={{
-                            marginBottom: "2px",
-                            fontSize: "12px",
-                            color: "#6b7280",
-                          }}
-                        >
-                          {seg.start?.toFixed
-                            ? seg.start.toFixed(1)
-                            : seg.start}{" "}
-                          s ~{" "}
-                          {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
-                        </div>
-                        <div style={{ marginBottom: tags.length ? "4px" : 0 }}>
-                          {seg.text}
-                        </div>
-                        {tags.length > 0 && (
-                          <div
-                            style={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: "4px",
-                              fontSize: "11px",
-                            }}
-                          >
-                            {tags.map((t) => (
-                              <span
-                                key={t}
-                                style={{
-                                  padding: "2px 6px",
-                                  borderRadius: "999px",
-                                  backgroundColor: "#dbeafe",
-                                  color: "#1d4ed8",
-                                }}
-                              >
-                                OSAD: {t}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                        {seg.start?.toFixed
+                          ? seg.start.toFixed(1)
+                          : seg.start}{" "}
+                        s ~{" "}
+                        {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
                       </div>
-                    );
-                  })}
+                      <div>{seg.text}</div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -693,62 +611,32 @@ function App() {
                     fontSize: "13px",
                   }}
                 >
-                  {supervisorSegments.map((seg) => {
-                    const idx = seg._idx;
-                    const tags = getOsadTagsForSegment(idx);
-                    return (
+                  {supervisorSegments.map((seg, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: "6px 8px",
+                        borderRadius: "8px",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #e5e7eb",
+                      }}
+                    >
                       <div
-                        key={idx}
                         style={{
-                          padding: "6px 8px",
-                          borderRadius: "8px",
-                          backgroundColor: "#ffffff",
-                          border: "1px solid #e5e7eb",
+                          marginBottom: "2px",
+                          fontSize: "12px",
+                          color: "#6b7280",
                         }}
                       >
-                        <div
-                          style={{
-                            marginBottom: "2px",
-                            fontSize: "12px",
-                            color: "#6b7280",
-                          }}
-                        >
-                          {seg.start?.toFixed
-                            ? seg.start.toFixed(1)
-                            : seg.start}{" "}
-                          s ~{" "}
-                          {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
-                        </div>
-                        <div style={{ marginBottom: tags.length ? "4px" : 0 }}>
-                          {seg.text}
-                        </div>
-                        {tags.length > 0 && (
-                          <div
-                            style={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: "4px",
-                              fontSize: "11px",
-                            }}
-                          >
-                            {tags.map((t) => (
-                              <span
-                                key={t}
-                                style={{
-                                  padding: "2px 6px",
-                                  borderRadius: "999px",
-                                  backgroundColor: "#dbeafe",
-                                  color: "#1d4ed8",
-                                }}
-                              >
-                                OSAD: {t}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                        {seg.start?.toFixed
+                          ? seg.start.toFixed(1)
+                          : seg.start}{" "}
+                        s ~{" "}
+                        {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
                       </div>
-                    );
-                  })}
+                      <div>{seg.text}</div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -872,19 +760,6 @@ function App() {
                 </div>
               ))}
             </div>
-            {/* 근거가 있는 OSAD 차원 목록 간단 표시 */}
-            {Object.keys(osadEvidence).length > 0 && (
-              <p
-                style={{
-                  marginTop: "8px",
-                  fontSize: "12px",
-                  color: "#4b5563",
-                }}
-              >
-                * 파란 OSAD 태그가 붙은 segment는 해당 차원의 근거로 사용된
-                발언입니다.
-              </p>
-            )}
           </section>
 
           {/* 구조 분석 */}

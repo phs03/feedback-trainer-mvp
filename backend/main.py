@@ -10,27 +10,46 @@ from backend.api.report import router as report_router
 
 app = FastAPI(title="AI Feedback MVP", version="0.1.0")
 
+# =========================
 # CORS 설정
-# ALLOWED_ORIGINS = "https://your-frontend.vercel.app,https://staging.example.com"
-origins = [
+# =========================
+
+# Render / 로컬 공통으로 쓸 origin 목록 기본값
+default_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://feedback-trainer-mvp.vercel.app",
+]
+
+# ALLOWED_ORIGINS 환경변수에서 가져오기
+# 예: "https://feedback-trainer-mvp.vercel.app,http://localhost:5173"
+env_origins = [
     o.strip()
     for o in os.getenv("ALLOWED_ORIGINS", "").split(",")
     if o.strip()
 ]
 
-if not origins:
-    # 초기에는 임시로 * 허용 → Vercel 도메인 확정 후 반드시 좁히기!
-    origins = ["*"]
+if env_origins:
+    origins = env_origins
+else:
+    origins = default_origins
+
+print("=== CORS ALLOW_ORIGINS ===")
+for o in origins:
+    print(" -", o)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=False,  # 쿠키/세션 안 쓰면 False로 두는 편이 CORS 쪽 덜 까다로움
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# =========================
 # 헬스 체크용 스키마
+# =========================
+
 class HealthResponse(BaseModel):
     status: str
     version: str

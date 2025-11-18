@@ -2,10 +2,10 @@
 
 import os
 import io
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -68,11 +68,83 @@ async def transcribe_audio(file: UploadFile = File(...)):
           "end": 10.1,
           "text": "저는 환자 상태를 안정적이라고 판단했습니다."
         }
-      ]
+      ],
+      "transcript": "전체 대화 한 줄 텍스트..."
     }
-
-    ⚠️ 프론트엔드에서는 기존 transcript 대신 text/segments를 사용하도록 수정 필요.
-       (당장은 transcript 호환용 필드도 같이 내려줌)
     """
     if not file or not file.content_type:
-        rai
+        raise HTTPException(
+            status_code=400,
+            detail="audio file required (field name: 'file')",
+        )
+
+    if not file.content_type.startswith("audio/"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"audio file required, got {file.content_type!r}",
+        )
+
+    try:
+        # 업로드된 바이너리를 메모리 버퍼로 변환
+        audio_bytes = await file.read()
+        audio_buffer = io.BytesIO(audio_bytes)
+        audio_buffer.name = file.filename or "recording.webm"
+
+        print("=== DEBUG: STT 호출 시작 ===")
+        # 🔥 STT + Speaker Diarization 호출
+        resp = client.audio.transcriptions.create(
+            # diarization + transcription 지원 모델명
+            model="gpt-4o-transcribe-diarize",
+            file=audio_buffer,
+            # diarized_json: text + segments(speaker, start, end, text)
+            response_format="diarized_json",
+            language="ko",
+        )
+
+        # 여기서 resp가 어떤 타입인지 로그로 한번 확인
+        print("=== DEBUG: STT raw resp type ===", type(resp))
+
+        # ▣ resp를 dict로 변환
+        if isinstance(resp, dict):
+            data = resp
+        elif hasattr(resp, "model_dump"):
+            data = resp.model_dump()
+        elif hasattr(resp, "to_dict"):
+            data = resp.to_dict()
+        elif isinstance(resp, str):
+            # 혹시 문자열 JSON이라면
+            try:
+                data = json.loads(resp)
+            except Exception:
+                data = {"raw": resp}
+        else:
+            # 마지막 fallback: 가능한 속성만 추출
+            data = {
+                "text": getattr(resp, "text", None),
+                "language": getattr(resp, "language", None),
+                "segments": getattr(resp, "segments", None),
+            }
+
+        print("=== DEBUG: STT data ===", data)
+
+        text = data.get("text")
+        language = data.get("language")
+        segments = data.get("segments") or []
+
+        result = {
+            "text": text,
+            "language": language,
+            "segments": segments,
+            # ✅ 기존 프론트에서 쓰던 필드와 호환
+            "transcript": text,
+        }
+
+        print("=== DEBUG: STT result to client ===", result)
+
+        # ⚠ 여기서 None을 리턴하면 프론트에서 null이 보이므로
+        # 항상 dict를 그대로 리턴 (FastAPI가 JSON으로 직렬화)
+        return result
+
+    except Exception as e:
+        print("=== DEBUG: STT ERROR ===", repr(e))
+        raise HTTPException(status_code=500, detail=f"STT failed: {e}")
