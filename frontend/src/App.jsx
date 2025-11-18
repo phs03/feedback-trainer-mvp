@@ -3,8 +3,9 @@ import { useState, useRef } from "react";
 // =====================================================
 // API_BASE 설정
 //  - 로컬(localhost, 127.0.0.1)에서는 항상 로컬 백엔드 사용
-//  - 배포 환경에서는 VITE_API_BASE_URL 있으면 그걸 사용
-//    없으면 Render 기본 URL로 fallback
+//  - 배포 환경(Vercel 등)에서는
+//      1) VITE_API_BASE_URL이 있으면 그걸 사용
+//      2) 없으면 Render 백엔드 URL로 fallback
 // =====================================================
 const LOCAL_API_BASE = "http://127.0.0.1:8000";
 const REMOTE_API_BASE = "https://feedback-trainer-mvp.onrender.com";
