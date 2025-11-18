@@ -40,11 +40,13 @@ for o in origins:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=False,  # 쿠키/세션 안 쓰면 False로 두는 편이 CORS 쪽 덜 까다로움
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+print("=== CORS ALLOW_ORIGINS === * (all origins allowed)")
 
 # =========================
 # 헬스 체크용 스키마
