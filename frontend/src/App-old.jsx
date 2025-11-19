@@ -1,30 +1,34 @@
 import { useState, useRef } from "react";
 
-// --- API_BASE 설정 ---
-// 기본값: 로컬 개발용 백엔드
-let API_BASE = "http://127.0.0.1:8000";
+// =====================================================
+// API_BASE 설정
+//  - 로컬(localhost, 127.0.0.1)에서는 항상 로컬 백엔드 사용
+//  - 배포 환경(Vercel 등)에서는
+//      1) VITE_API_BASE_URL이 있으면 그걸 사용
+//      2) 없으면 Render 백엔드 URL로 fallback
+// =====================================================
+const LOCAL_API_BASE = "http://127.0.0.1:8000";
+const REMOTE_API_BASE = "https://feedback-trainer-mvp.onrender.com";
 
-// Vite 환경변수
+let API_BASE = LOCAL_API_BASE;
 const rawApiBase = import.meta.env.VITE_API_BASE_URL;
 
 if (typeof window !== "undefined") {
   const host = window.location.hostname;
-  const isLocalHost = host === "localhost" || host === "127.0.0.1";
 
-  if (isLocalHost) {
-    // 로컬 개발 환경 → 항상 로컬 백엔드
-    API_BASE = "http://127.0.0.1:8000";
+  if (host === "localhost" || host === "127.0.0.1") {
+    // 🔹 로컬 개발 환경: 무조건 로컬 백엔드
+    API_BASE = LOCAL_API_BASE;
   } else if (rawApiBase && rawApiBase.trim()) {
-    // 배포 환경 + env가 설정된 경우
+    // 🔹 배포 환경 + Vercel 환경변수 지정됨
     API_BASE = rawApiBase.trim().replace(/\/+$/, "");
   } else {
-    // 배포 환경인데 env가 비어 있으면, Render 백엔드로 강제 fallback
-    API_BASE = "https://feedback-trainer-mvp.onrender.com";
+    // 🔹 배포 환경 + 환경변수 없음 → Render 백엔드로 fallback
+    API_BASE = REMOTE_API_BASE;
   }
 }
 
 console.log("[DEBUG] API_BASE =", API_BASE);
-
 
 function App() {
   const [transcript, setTranscript] = useState(
