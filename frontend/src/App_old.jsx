@@ -7,19 +7,24 @@ let API_BASE = "http://127.0.0.1:8000";
 // Vite 환경변수
 const rawApiBase = import.meta.env.VITE_API_BASE_URL;
 
-// 브라우저 환경에서 호스트를 보고 결정
 if (typeof window !== "undefined") {
   const host = window.location.hostname;
-  if (host === "localhost" || host === "127.0.0.1") {
-    // 로컬 개발 환경 → 무조건 로컬 백엔드 사용
+  const isLocalHost = host === "localhost" || host === "127.0.0.1";
+
+  if (isLocalHost) {
+    // 로컬 개발 환경 → 항상 로컬 백엔드
     API_BASE = "http://127.0.0.1:8000";
   } else if (rawApiBase && rawApiBase.trim()) {
-    // 배포 환경 → .env에 지정한 백엔드 URL 사용
+    // 배포 환경 + env가 설정된 경우
     API_BASE = rawApiBase.trim().replace(/\/+$/, "");
+  } else {
+    // 배포 환경인데 env가 비어 있으면, Render 백엔드로 강제 fallback
+    API_BASE = "https://feedback-trainer-mvp.onrender.com";
   }
 }
 
 console.log("[DEBUG] API_BASE =", API_BASE);
+
 
 function App() {
   const [transcript, setTranscript] = useState(
