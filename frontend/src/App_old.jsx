@@ -39,7 +39,7 @@ function normalizeLangCode(code) {
 }
 
 function renderDetectedLanguage(code) {
-  if (!code) return "아직 감지되지 않음";
+  if (!code) return "";
   const normalized = normalizeLangCode(code);
   const label = LANGUAGE_LABELS[normalized] || `코드: ${code}`;
   return `${label} (${code})`;
@@ -61,8 +61,6 @@ function App() {
   });
 
   // 🔹 언어 상태
-  // - detectedLanguage: STT에서 자동 감지된 언어 코드 (예: "ko", "en-US")
-  // - language: OSAD 코칭 리포트 언어 선택 (auto / ko / en / ...)
   const [detectedLanguage, setDetectedLanguage] = useState(null);
   const [language, setLanguage] = useState("auto");
 
@@ -443,10 +441,12 @@ function App() {
             fontSize: "13px",
           }}
         >
-          <div style={{ marginBottom: "6px" }}>
-            <strong>자동 감지된 언어(STT):</strong>{" "}
-            {renderDetectedLanguage(detectedLanguage)}
-          </div>
+          {detectedLanguage && (
+            <div style={{ marginBottom: "6px" }}>
+              <strong>자동 감지된 언어(STT):</strong>{" "}
+              {renderDetectedLanguage(detectedLanguage)}
+            </div>
+          )}
           <div
             style={{
               display: "flex",
@@ -930,7 +930,7 @@ function App() {
               OSAD 점수
             </h2>
             <p style={{ marginBottom: "8px", fontSize: "14px", color: "#555" }}>
-              총점: <strong>{result.osad.total}</strong> / {result.osad.scale}
+              총점: <strong>{result.osad.total}</strong>점
             </p>
             <div
               style={{

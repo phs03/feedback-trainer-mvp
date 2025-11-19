@@ -22,14 +22,14 @@ if (typeof window !== "undefined") {
 console.log("[DEBUG] API_BASE =", API_BASE);
 
 const LANGUAGE_LABELS = {
-  auto: "자동 (지도전문의 언어 추론)",
-  ko: "한국어",
-  en: "영어",
-  ja: "일본어",
-  zh: "중국어",
-  es: "스페인어",
-  fr: "프랑스어",
-  de: "독일어",
+  auto: "자동 (Auto)",
+  ko: "한국어 (Korean)",
+  en: "영어 (English)",
+  ja: "일본어 (Japanese)",
+  zh: "중국어 (Chinese)",
+  es: "스페인어 (Spanish)",
+  fr: "프랑스어 (French)",
+  de: "독일어 (German)",
 };
 
 function normalizeLangCode(code) {
@@ -149,7 +149,7 @@ function App() {
 
       mediaRecorder.onstart = () => {
         setIsRecording(true);
-        setRecordingStatus("🎙 녹음 중입니다...");
+        setRecordingStatus("🎙 녹음 중입니다... (Recording)");
         setAudioUrl(null); // 이전 녹음 URL 초기화
         setSegments([]); // 이전 diarization 결과 초기화
         setDetectedLanguage(null); // 이전 감지 언어 초기화
@@ -157,7 +157,9 @@ function App() {
 
       mediaRecorder.onstop = async () => {
         setIsRecording(false);
-        setRecordingStatus("🎧 녹음 완료! 재생 또는 텍스트 변환을 진행하세요.");
+        setRecordingStatus(
+          "🎧 녹음 완료! 재생 또는 텍스트 변환을 진행하세요. (Recording finished)"
+        );
 
         const audioBlob = new Blob(audioChunksRef.current, {
           type: "audio/webm",
@@ -187,24 +189,28 @@ function App() {
   // 🔹 녹음 재생
   function handlePlayRecording() {
     if (!audioUrl) {
-      setRecordingStatus("⚠ 아직 재생할 녹음이 없습니다.");
+      setRecordingStatus(
+        "⚠ 아직 재생할 녹음이 없습니다. (No recording to play)"
+      );
       return;
     }
     const audio = new Audio(audioUrl);
     audio.play().catch((err) => {
       console.error("재생 실패:", err);
-      setRecordingStatus("⚠ 재생 중 오류가 발생했습니다.");
+      setRecordingStatus("⚠ 재생 중 오류가 발생했습니다. (Play error)");
     });
   }
 
   // 🔹 STT 호출 (녹음된 Blob → STT + Speaker Diarization)
   async function handleTranscribeRecording() {
     setError("");
-    setRecordingStatus("🧠 텍스트 변환 중...");
+    setRecordingStatus("🧠 텍스트 변환 중... (Converting to text)");
 
     try {
       if (!audioChunksRef.current.length) {
-        setRecordingStatus("⚠ 변환할 녹음 데이터가 없습니다.");
+        setRecordingStatus(
+          "⚠ 변환할 녹음 데이터가 없습니다. (No audio to convert)"
+        );
         return;
       }
 
@@ -233,7 +239,9 @@ function App() {
       console.log("STT 응답(raw):", data);
 
       if (!data) {
-        setRecordingStatus("❌ STT 응답이 비어 있습니다(null).");
+        setRecordingStatus(
+          "❌ STT 응답이 비어 있습니다(null). (Empty STT response)"
+        );
         setError(
           "STT 응답이 null 입니다. /api/stt 백엔드 응답 구조를 한 번 확인해 주세요."
         );
@@ -245,7 +253,9 @@ function App() {
       const sttLang = data.language || null;
 
       if (!sttText && sttSegments.length === 0) {
-        setRecordingStatus("⚠ STT 응답에 텍스트/segments가 없습니다.");
+        setRecordingStatus(
+          "⚠ STT 응답에 텍스트/segments가 없습니다. (No text/segments in STT response)"
+        );
       }
 
       if (sttText) {
@@ -268,19 +278,24 @@ function App() {
 
       if (sttText || sttSegments.length > 0) {
         setRecordingStatus(
-          "✅ 텍스트 변환 완료! 아래 입력창과 화자별 영역에서 내용을 확인하세요."
+          "✅ 텍스트 변환 완료! 아래 입력창과 화자별 영역에서 내용을 확인하세요. (Conversion done)"
         );
       }
     } catch (err) {
       console.error(err);
-      setRecordingStatus("❌ 음성 → 텍스트 변환 실패");
+      setRecordingStatus(
+        "❌ 음성 → 텍스트 변환 실패 (STT failed, see error above)"
+      );
       setError(err.message || "STT 중 오류가 발생했습니다.");
     }
   }
 
   // 🔹 Speaker label을 사람 역할로 보여주기
   function renderSpeakerLabel(speaker) {
-    return speakerMapping[speaker] || speaker;
+    const role = speakerMapping[speaker] || speaker;
+    if (role === "지도전문의") return "지도전문의 (Supervisor)";
+    if (role === "전공의") return "전공의 (Resident)";
+    return role;
   }
 
   function handleSpeakerSelectChange(speakerKey, value) {
@@ -301,7 +316,7 @@ function App() {
     _idx: idx,
   }));
 
-  // 🔹 역할별 segment 분리
+  // 🔹 역할별 segment 분리 (내부 값은 한글 그대로 사용)
   const traineeSegments = indexedSegments.filter(
     (seg) => speakerMapping[seg.speaker] === "전공의"
   );
@@ -359,7 +374,7 @@ function App() {
             marginBottom: "8px",
           }}
         >
-          1. 음성 녹음하기
+          1. 음성 녹음하기 (Record audio)
         </h2>
         <p style={{ fontSize: "14px", color: "#555", marginBottom: "8px" }}>
           지도전문의-전공의 피드백 장면을 이 브라우저에서 바로 녹음합니다.
@@ -379,7 +394,7 @@ function App() {
               fontWeight: 600,
             }}
           >
-            🎙 녹음 시작
+            🎙 녹음 시작 (Start recording)
           </button>
           <button
             type="button"
@@ -393,7 +408,7 @@ function App() {
               fontWeight: 600,
             }}
           >
-            ⏹ 녹음 종료
+            ⏹ 녹음 종료 (Stop)
           </button>
           <button
             type="button"
@@ -407,7 +422,7 @@ function App() {
               fontWeight: 600,
             }}
           >
-            ▶ 녹음 재생
+            ▶ 녹음 재생 (Play)
           </button>
           <button
             type="button"
@@ -421,7 +436,7 @@ function App() {
               fontWeight: 600,
             }}
           >
-            ✨ 텍스트 변환 (화자 구분 포함)
+            ✨ 텍스트 변환 (Convert to text with speakers)
           </button>
         </div>
         {recordingStatus && (
@@ -443,7 +458,7 @@ function App() {
         >
           {detectedLanguage && (
             <div style={{ marginBottom: "6px" }}>
-              <strong>자동 감지된 언어(STT):</strong>{" "}
+              <strong>자동 감지된 언어 (Detected language):</strong>{" "}
               {renderDetectedLanguage(detectedLanguage)}
             </div>
           )}
@@ -456,7 +471,7 @@ function App() {
             }}
           >
             <span>
-              <strong>OSAD 코칭 리포트 언어 선택:</strong>
+              <strong>사용 언어 (Language for coaching):</strong>
             </span>
             <select
               value={language}
@@ -499,7 +514,7 @@ function App() {
               marginBottom: "8px",
             }}
           >
-            1-2. 화자별 transcript (Speaker Diarization)
+            1-2. 화자별 transcript (Speaker diarization)
           </h2>
 
           {/* 화자 역할 매핑 */}
@@ -529,9 +544,10 @@ function App() {
                     }}
                   >
                     <option value={spk}>{spk}</option>
-                    <option value="지도전문의">지도전문의</option>
-                    <option value="전공의">전공의</option>
-                    <option value="기타">기타</option>
+                    {/* 값은 한글 그대로 두고, 라벨만 이중언어 */}
+                    <option value="지도전문의">지도전문의 (Supervisor)</option>
+                    <option value="전공의">전공의 (Resident)</option>
+                    <option value="기타">기타 (Other)</option>
                   </select>
                 </div>
               ))}
@@ -630,12 +646,11 @@ function App() {
               marginBottom: "8px",
             }}
           >
-            1-3. 역할별 발언 분리
+            1-3. 역할별 발언 분리 (By role)
           </h2>
           <p style={{ fontSize: "13px", color: "#555", marginBottom: "8px" }}>
             좌측에는 전공의 발언, 우측에는 지도전문의 발언만 시간 순서대로
-            모아서 보여줍니다. 나중에는 전공의 피드백 기능도 이 영역을 기반으로
-            확장할 수 있습니다.
+            모아서 보여줍니다. (Left: Resident, Right: Supervisor)
           </p>
           <div
             style={{
@@ -663,7 +678,7 @@ function App() {
                   color: "#1f2933",
                 }}
               >
-                전공의 발언
+                전공의 발언 (Resident)
               </div>
               {traineeSegments.length === 0 ? (
                 <p
@@ -673,7 +688,8 @@ function App() {
                     fontStyle: "italic",
                   }}
                 >
-                  전공의로 분류된 발언이 아직 없습니다.
+                  전공의로 분류된 발언이 아직 없습니다. (No resident utterance
+                  yet)
                 </p>
               ) : (
                 <div
@@ -764,7 +780,7 @@ function App() {
                   color: "#1f2933",
                 }}
               >
-                지도전문의 발언
+                지도전문의 발언 (Supervisor)
               </div>
               {supervisorSegments.length === 0 ? (
                 <p
@@ -774,7 +790,8 @@ function App() {
                     fontStyle: "italic",
                   }}
                 >
-                  지도전문의로 분류된 발언이 아직 없습니다.
+                  지도전문의로 분류된 발언이 아직 없습니다. (No supervisor
+                  utterance yet)
                 </p>
               ) : (
                 <div
@@ -888,7 +905,7 @@ function App() {
               color: "white",
             }}
           >
-            {loading ? "분석 중..." : "OSAD 분석하기"}
+            {loading ? "분석 중... (Analyzing)" : "OSAD 분석하기 (Analyze OSAD)"}
           </button>
         </div>
       </form>
@@ -927,10 +944,12 @@ function App() {
                 marginBottom: "8px",
               }}
             >
-              OSAD 점수
+              OSAD 점수 (Scores)
             </h2>
             <p style={{ marginBottom: "8px", fontSize: "14px", color: "#555" }}>
-              총점: <strong>{result.osad.total}</strong>점
+              총점 (Total score):{" "}
+              <strong>{result.osad.total}</strong>
+              점
             </p>
             <div
               style={{
@@ -975,7 +994,7 @@ function App() {
                 }}
               >
                 * 파란 OSAD 태그가 붙은 segment는 해당 차원의 근거로 사용된
-                발언입니다.
+                발언입니다. (Blue OSAD tags = evidence)
               </p>
             )}
           </section>
@@ -996,7 +1015,7 @@ function App() {
                 marginBottom: "8px",
               }}
             >
-              구조 분석 (Opening / Core / Closing)
+              구조 분석 (Structure: Opening / Core / Closing)
             </h2>
             <ul style={{ listStyle: "none", paddingLeft: 0, fontSize: "14px" }}>
               <li>
@@ -1030,7 +1049,7 @@ function App() {
                 marginBottom: "8px",
               }}
             >
-              코칭 리포트
+              코칭 리포트 (Coaching report)
             </h2>
 
             <div style={{ marginBottom: "12px" }}>
@@ -1058,7 +1077,7 @@ function App() {
                   marginBottom: "4px",
                 }}
               >
-                개선이 필요한 상위 3가지 (Improvements)
+                개선이 필요한 상위 3가지 (Top 3 improvements)
               </h3>
               <ul style={{ paddingLeft: "18px", fontSize: "14px" }}>
                 {result.coach.improvements_top3.map((s, idx) => (
@@ -1090,7 +1109,7 @@ function App() {
                   marginBottom: "4px",
                 }}
               >
-                10초짜리 미세 습관 (Micro habit)
+                10초짜리 미세 습관 (10-second micro habit)
               </h3>
               <p style={{ fontSize: "14px", whiteSpace: "pre-wrap" }}>
                 {result.coach.micro_habit_10sec}
@@ -1119,7 +1138,7 @@ function App() {
                 marginBottom: "8px",
               }}
             >
-              Raw JSON (디버깅용)
+              Raw JSON (디버깅용 / for debugging)
             </h2>
             <pre style={{ margin: 0 }}>
               {JSON.stringify(result, null, 2)}
