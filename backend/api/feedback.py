@@ -112,6 +112,23 @@ async def analyze_feedback(payload: FeedbackRequest) -> Dict[str, Any]:
             f"note={payload.context.note}"
         )
 
+    # ---------- 출력 언어 결정 ----------
+    # 프론트에서 온 language 코드에 따라 코칭 리포트 언어를 설정
+    lang_code = (payload.language or "ko").lower()
+
+    lang_name_map = {
+        "ko": "Korean",
+        "en": "English",
+        "zh": "Chinese",
+        "es": "Spanish",
+        "ja": "Japanese",
+        "fr": "French",
+        "de": "German",
+        "auto": "the most appropriate language for the conversation",
+    }
+
+    output_lang_name = lang_name_map.get(lang_code, "the same language as the conversation")
+
     # ---------- 프롬프트 구성 ----------
     system_prompt = (
         "You are an expert in medical education and feedback, "
@@ -160,8 +177,9 @@ async def analyze_feedback(payload: FeedbackRequest) -> Dict[str, Any]:
         "}\n\n"
         "All evidence indices must refer to the segment indices given in the input.\n"
         "Use only indices that exist. If there is no clear evidence, use an empty list.\n"
-        "Write all explanation texts (strings) in Korean.\n"
+        f"Write all explanation texts (strings) in {output_lang_name}.\n"
     )
+
 
     user_prompt = (
         f"Language: {payload.language}\n"
