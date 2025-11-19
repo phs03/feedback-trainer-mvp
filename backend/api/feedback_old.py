@@ -37,8 +37,6 @@ class FeedbackRequest(BaseModel):
 
     context: Optional[FeedbackContext] = None
     segments: Optional[List[Segment]] = None
-    # 프론트에서 보내주는 SPEAKER_00 → "지도전문의"/"전공의" 매핑
-    speaker_mapping: Optional[Dict[str, str]] = None
 
 
 router = APIRouter(tags=["feedback"])
@@ -95,87 +93,12 @@ async def analyze_feedback(payload: FeedbackRequest) -> Dict[str, Any]:
 
     transcript = payload.transcript.strip()
 
-    # 요청에서 segments와 speaker_mapping 정리
-    segments = payload.segments or []
-    speaker_mapping = payload.speaker_mapping or {}
-
-    # 🔹 지도전문의로 표시된 segment index 찾기
-    supervisor_indices: List[int] = []
-    for idx, seg in enumerate(segments):
-        role = speaker_mapping.get(seg.speaker, "")
-        if role == "지도전문의":
-            supervisor_indices.append(idx)
-
-    # 🔹 segments는 있는데, 지도전문의 발언이 하나도 없으면 → LLM 호출하지 않고 "평가 불가/최소점 + 안내" 리턴
-    if segments and not supervisor_indices:
-        # OSAD을 일단 최소 점수(1점)으로 채워 넣기
-        osad_scores = {
-            "approach": 1,
-            "learning_env": 1,
-            "engagement": 1,
-            "reaction": 1,
-            "reflection": 1,
-            "analysis": 1,
-            "diagnosis": 1,
-            "application": 1,
-            "summary": 1,
-        }
-        osad_scores["total"] = sum(osad_scores.values())
-        osad_scores["scale"] = 45
-
-        # evidence는 모두 빈 리스트
-        evidence_osad = {
-            key: [] for key in [
-                "approach",
-                "learning_env",
-                "engagement",
-                "reaction",
-                "reflection",
-                "analysis",
-                "diagnosis",
-                "application",
-                "summary",
-            ]
-        }
-
-        return {
-            "osad": osad_scores,
-            "structure": {
-                "has_opening": False,
-                "has_core": False,
-                "has_closing": False,
-            },
-            "coach": {
-                "strengths": [
-                    "이번 녹음에는 전공의의 발언만 있고, 지도전문의의 피드백 발언이 거의(또는 전혀) 없습니다."
-                ],
-                "improvements_top3": [
-                    "OSAD 평가는 지도전문의의 피드백 발언을 기준으로 하기 때문에, 지도전문의가 전공의에게 설명하고 정리하는 발언이 필요합니다.",
-                    "전공의가 설명한 뒤, 지도전문의가 관찰·이유·결과·핵심 메시지를 말해 주는 피드백 구조를 의도적으로 만들어 보세요.",
-                    "다음에는 지도전문의가 최소 몇 문장 이상 직접 피드백을 말하는 장면이 포함된 녹음을 남겨 주세요.",
-                ],
-                "script_next_time": (
-                    "이번 대화는 대부분 전공의의 설명으로 구성되어 있어 지도전문의 피드백에 대한 OSAD 평가를 수행하기 어렵습니다. "
-                    "다음에는 전공의의 설명이 끝난 뒤, 지도전문의가 관찰한 점과 그 이유, 환자에게 미치는 의미, "
-                    "다음 진료에서 전공의가 시도해 볼 행동을 정리해서 말해 주는 연습을 해보세요."
-                ),
-                "micro_habit_10sec": (
-                    "피드백 장면이 시작되면 '지금은 전공의에게 구조화된 피드백을 주는 시간이다'라고 마음속으로 정리한 뒤, "
-                    "최소 두 문장은 지도전문의가 직접 요약과 조언을 말하는 습관을 들여 보세요."
-                ),
-            },
-            "evidence": {
-                "osad": evidence_osad
-            },
-        }
-
-    # ---------- segments를 인덱스와 함께 문자열로 나열 (role 포함) ----------
-    if segments:
+    # ---------- segments를 인덱스와 함께 문자열로 나열 ----------
+    if payload.segments:
         lines = []
-        for idx, seg in enumerate(segments):
-            role = speaker_mapping.get(seg.speaker, "unknown")
+        for idx, seg in enumerate(payload.segments):
             lines.append(
-                f"[{idx}] role={role}, speaker={seg.speaker}, "
+                f"[{idx}] speaker={seg.speaker}, "
                 f"start={seg.start}, end={seg.end}, text=\"{seg.text}\""
             )
         segments_desc = "\n".join(lines)
@@ -188,6 +111,23 @@ async def analyze_feedback(payload: FeedbackRequest) -> Dict[str, Any]:
             f"case={payload.context.case}, "
             f"note={payload.context.note}"
         )
+
+    # ---------- 출력 언어 결정 ----------
+    # 프론트에서 온 language 코드에 따라 코칭 리포트 언어를 설정
+    lang_code = (payload.language or "ko").lower()
+
+    lang_name_map = {
+        "ko": "Korean",
+        "en": "English",
+        "zh": "Chinese",
+        "es": "Spanish",
+        "ja": "Japanese",
+        "fr": "French",
+        "de": "German",
+        "auto": "the most appropriate language for the conversation",
+    }
+
+    output_lang_name = lang_name_map.get(lang_code, "the same language as the conversation")
 
     # ---------- 프롬프트 구성 ----------
     system_prompt = (
@@ -237,8 +177,9 @@ async def analyze_feedback(payload: FeedbackRequest) -> Dict[str, Any]:
         "}\n\n"
         "All evidence indices must refer to the segment indices given in the input.\n"
         "Use only indices that exist. If there is no clear evidence, use an empty list.\n"
-        "Write all explanation texts (strings) in Korean.\n"
+        f"Write all explanation texts (strings) in {output_lang_name}.\n"
     )
+
 
     user_prompt = (
         f"Language: {payload.language}\n"

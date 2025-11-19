@@ -5,14 +5,12 @@ import io
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from dotenv import load_dotenv
 from openai import OpenAI
 
 # ----------------------------------------------------
 # 1) 프로젝트 루트(ai_feedback_mvp/.env)에서 .env 로드
-#    stt.py 위치: ai_feedback_mvp/backend/api/stt.py
-#    parents[2] => ai_feedback_mvp
 # ----------------------------------------------------
 ROOT_DIR = Path(__file__).resolve().parents[2]   # .../ai_feedback_mvp
 ENV_PATH = ROOT_DIR / ".env"
@@ -43,13 +41,18 @@ router = APIRouter(prefix="/api", tags=["stt"])
 
 
 @router.post("/stt")
-async def transcribe_audio(file: UploadFile = File(...)):
+async def transcribe_audio(
+    file: UploadFile = File(...),
+    # 프론트에서 FormData로 넘기는 language (예: "ko", "en", "ja", "auto"...)
+    language: str = Form("auto"),
+):
     """
-    음성 파일을 STT + Speaker Diarization까지 수행하는 엔드포인트
+    음성 파일을 STT + (모델이 지원하면) Speaker Diarization까지 수행하는 엔드포인트
 
     🔹 요청
-      - FormData: { file: <audio> }
-      - content_type: audio/* (webm, wav 등)
+      - FormData:
+        - file: <audio>
+        - language: "auto" | "ko" | "en" | "zh" | "es" | "ja" | "fr" | "de" ...
 
     🔹 응답 예시(JSON)
     {
@@ -91,17 +94,20 @@ async def transcribe_audio(file: UploadFile = File(...)):
         audio_buffer.name = file.filename or "recording.webm"
 
         print("=== DEBUG: STT 호출 시작 ===")
-        # 🔥 STT + Speaker Diarization 호출
-        resp = client.audio.transcriptions.create(
-            # diarization + transcription 지원 모델명
-            model="gpt-4o-transcribe-diarize",
-            file=audio_buffer,
-            # diarized_json: text + segments(speaker, start, end, text)
-            response_format="diarized_json",
-            language="ko",
-        )
+        print("=== DEBUG: 요청 language ===", language)
 
-        # 여기서 resp가 어떤 타입인지 로그로 한번 확인
+        # 🔥 STT + (diarization) 호출
+        # language = "auto" 이면 모델에 맡기고, 명시된 경우만 강제로 전달
+        kwargs = {
+            "model": "gpt-4o-transcribe-diarize",  # 계정에서 지원되는 모델명
+            "file": audio_buffer,
+            "response_format": "diarized_json",
+        }
+        if language and language != "auto":
+            kwargs["language"] = language
+
+        resp = client.audio.transcriptions.create(**kwargs)
+
         print("=== DEBUG: STT raw resp type ===", type(resp))
 
         # ▣ resp를 dict로 변환
@@ -112,13 +118,11 @@ async def transcribe_audio(file: UploadFile = File(...)):
         elif hasattr(resp, "to_dict"):
             data = resp.to_dict()
         elif isinstance(resp, str):
-            # 혹시 문자열 JSON이라면
             try:
                 data = json.loads(resp)
             except Exception:
                 data = {"raw": resp}
         else:
-            # 마지막 fallback: 가능한 속성만 추출
             data = {
                 "text": getattr(resp, "text", None),
                 "language": getattr(resp, "language", None),
@@ -128,12 +132,14 @@ async def transcribe_audio(file: UploadFile = File(...)):
         print("=== DEBUG: STT data ===", data)
 
         text = data.get("text")
-        language = data.get("language")
+        detected_language = data.get("language")
         segments = data.get("segments") or []
+
+        result_language = language if language and language != "auto" else detected_language
 
         result = {
             "text": text,
-            "language": language,
+            "language": result_language,
             "segments": segments,
             # ✅ 기존 프론트에서 쓰던 필드와 호환
             "transcript": text,
@@ -141,8 +147,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
         print("=== DEBUG: STT result to client ===", result)
 
-        # ⚠ 여기서 None을 리턴하면 프론트에서 null이 보이므로
-        # 항상 dict를 그대로 리턴 (FastAPI가 JSON으로 직렬화)
+        # 항상 dict 리턴 → FastAPI가 JSON으로 직렬화
         return result
 
     except Exception as e:

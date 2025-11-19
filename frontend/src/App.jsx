@@ -10,33 +10,42 @@ const rawApiBase = import.meta.env.VITE_API_BASE_URL;
 // 브라우저 환경에서 호스트를 보고 결정
 if (typeof window !== "undefined") {
   const host = window.location.hostname;
-  const isLocalHost = host === "localhost" || host === "127.0.0.1";
-
-  if (isLocalHost) {
+  if (host === "localhost" || host === "127.0.0.1") {
+    // 로컬 개발 환경 → 무조건 로컬 백엔드 사용
     API_BASE = "http://127.0.0.1:8000";
   } else if (rawApiBase && rawApiBase.trim()) {
+    // 배포 환경 → .env에 지정한 백엔드 URL 사용
     API_BASE = rawApiBase.trim().replace(/\/+$/, "");
-  } else {
-    API_BASE = "https://feedback-trainer-mvp.onrender.com";
   }
 }
 
 console.log("[DEBUG] API_BASE =", API_BASE);
 
-// 언어 옵션 목록
-const LANGUAGE_OPTIONS = [
-  { code: "auto", label: "자동 감지 (Auto)" },
-  { code: "ko", label: "한국어 (Korean)" },
-  { code: "en", label: "English" },
-  { code: "zh", label: "中文 (Chinese)" },
-  { code: "es", label: "Español (Spanish)" },
-  { code: "ja", label: "日本語 (Japanese)" },
-  { code: "fr", label: "Français (French)" },
-  { code: "de", label: "Deutsch (German)" },
-];
+const LANGUAGE_LABELS = {
+  auto: "자동 (지도전문의 언어 추론)",
+  ko: "한국어",
+  en: "영어",
+  ja: "일본어",
+  zh: "중국어",
+  es: "스페인어",
+  fr: "프랑스어",
+  de: "독일어",
+};
+
+function normalizeLangCode(code) {
+  if (!code) return null;
+  const base = code.split("-")[0].toLowerCase();
+  return base;
+}
+
+function renderDetectedLanguage(code) {
+  if (!code) return "";
+  const normalized = normalizeLangCode(code);
+  const label = LANGUAGE_LABELS[normalized] || `코드: ${code}`;
+  return `${label} (${code})`;
+}
 
 function App() {
-  // 초기 텍스트
   const [transcript, setTranscript] = useState(
     "먼저 너 생각은 어땠어? 나는 네가 ABC를 설명한 건 좋았다고 생각해. 아까 환자에게 문제를 설명했을 때, 네가 쉬운 말로 바꿔서 말한 점이 특히 좋았어. 정리하면 중요한 건 감별진단의 우선순위를 환자에게도 이해할 수 있게 설명하는 거야. 다음에는 처음 5분 안에 네 가설을 한 번 말해보고, 그걸 환자에게도 공유해보자."
   );
@@ -44,24 +53,25 @@ function App() {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
 
-  // STT diarization 결과
+  // 🔹 STT diarization 결과
   const [segments, setSegments] = useState([]);
   const [speakerMapping, setSpeakerMapping] = useState({
     SPEAKER_00: "지도전문의",
     SPEAKER_01: "전공의",
   });
 
-  // 언어 선택
-  const [language, setLanguage] = useState("ko");
+  // 🔹 언어 상태
+  const [detectedLanguage, setDetectedLanguage] = useState(null);
+  const [language, setLanguage] = useState("auto");
 
-  // 녹음 관련
+  // 🔹 녹음 관련 상태
   const [isRecording, setIsRecording] = useState(false);
   const [recordingStatus, setRecordingStatus] = useState("");
   const [audioUrl, setAudioUrl] = useState(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  // OSAD 분석
+  // 🔹 OSAD 분석 API 호출
   async function handleAnalyze(e) {
     e.preventDefault();
     setLoading(true);
@@ -76,14 +86,15 @@ function App() {
         audio_ref: null,
         transcript: transcript,
         trainee_level: "PGY-2",
-        language: language,
+        language: language, // 🔹 선택한 언어를 백엔드로 전달
         context: {
           case: "ER teaching feedback",
           language: language,
           note: "ui test",
         },
+        // 🔹 화자 정보까지 같이 보냄 (나중에 백엔드 evidence에 사용)
         segments: segments,
-        speaker_mapping: speakerMapping,
+        speaker_mapping: speakerMapping, // 🔹 SPEAKER_00 → "지도전문의"/"전공의" 정보 전달
       };
 
       const url = `${API_BASE}/feedback`;
@@ -91,7 +102,9 @@ function App() {
 
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(payload),
         cache: "no-store",
       });
@@ -106,57 +119,64 @@ function App() {
       setResult(data);
     } catch (err) {
       console.error(err);
-      setError(err.message || "알 수 없는 오류 발생");
+      setError(err.message || "알 수 없는 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
   }
 
-  // 녹음 시작
+  // 🔹 녹음 시작
   async function handleStartRecording() {
     setError("");
 
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setError("이 브라우저는 녹음을 지원하지 않습니다.");
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setError("이 브라우저에서는 녹음 기능을 지원하지 않습니다.");
       return;
     }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
+
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
 
       mediaRecorder.onstart = () => {
         setIsRecording(true);
         setRecordingStatus("🎙 녹음 중입니다...");
-        setAudioUrl(null);
-        setSegments([]);
+        setAudioUrl(null); // 이전 녹음 URL 초기화
+        setSegments([]); // 이전 diarization 결과 초기화
+        setDetectedLanguage(null); // 이전 감지 언어 초기화
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         setIsRecording(false);
         setRecordingStatus("🎧 녹음 완료! 재생 또는 텍스트 변환을 진행하세요.");
 
         const audioBlob = new Blob(audioChunksRef.current, {
           type: "audio/webm",
         });
+
         const url = URL.createObjectURL(audioBlob);
         setAudioUrl(url);
+
         console.log("녹음된 Blob:", audioBlob);
       };
 
       mediaRecorder.start();
     } catch (err) {
       console.error(err);
-      setError("마이크 권한을 허용했는지 확인해주세요.");
+      setError("마이크 사용 권한을 허용했는지 확인해주세요.");
     }
   }
 
+  // 🔹 녹음 종료
   function handleStopRecording() {
     const mediaRecorder = mediaRecorderRef.current;
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
@@ -164,21 +184,20 @@ function App() {
     }
   }
 
+  // 🔹 녹음 재생
   function handlePlayRecording() {
     if (!audioUrl) {
       setRecordingStatus("⚠ 아직 재생할 녹음이 없습니다.");
       return;
     }
     const audio = new Audio(audioUrl);
-    audio
-      .play()
-      .catch((err) => {
-        console.error("재생 실패:", err);
-        setRecordingStatus("⚠ 재생 중 오류가 발생했습니다.");
-      });
+    audio.play().catch((err) => {
+      console.error("재생 실패:", err);
+      setRecordingStatus("⚠ 재생 중 오류가 발생했습니다.");
+    });
   }
 
-  // STT 호출
+  // 🔹 STT 호출 (녹음된 Blob → STT + Speaker Diarization)
   async function handleTranscribeRecording() {
     setError("");
     setRecordingStatus("🧠 텍스트 변환 중...");
@@ -195,10 +214,9 @@ function App() {
 
       const formData = new FormData();
       formData.append("file", audioBlob, "recording.webm");
-      formData.append("language", language);
 
       const url = `${API_BASE}/api/stt`;
-      console.log("[DEBUG] STT 요청 URL:", url, "language:", language);
+      console.log("[DEBUG] STT 요청 URL:", url);
 
       const res = await fetch(url, {
         method: "POST",
@@ -224,6 +242,7 @@ function App() {
 
       const sttText = data.transcript || data.text || "";
       const sttSegments = data.segments || [];
+      const sttLang = data.language || null;
 
       if (!sttText && sttSegments.length === 0) {
         setRecordingStatus("⚠ STT 응답에 텍스트/segments가 없습니다.");
@@ -233,6 +252,19 @@ function App() {
         setTranscript(sttText);
       }
       setSegments(sttSegments);
+
+      if (sttLang) {
+        setDetectedLanguage(sttLang);
+
+        const normalized = normalizeLangCode(sttLang);
+        if (normalized && LANGUAGE_LABELS[normalized]) {
+          // 감지된 언어가 우리가 지원하는 언어면 OSAD 언어 기본값을 그걸로
+          setLanguage(normalized);
+        } else {
+          // 잘 모르는 언어 코드는 auto로
+          setLanguage("auto");
+        }
+      }
 
       if (sttText || sttSegments.length > 0) {
         setRecordingStatus(
@@ -246,6 +278,7 @@ function App() {
     }
   }
 
+  // 🔹 Speaker label을 사람 역할로 보여주기
   function renderSpeakerLabel(speaker) {
     return speakerMapping[speaker] || speaker;
   }
@@ -257,15 +290,18 @@ function App() {
     }));
   }
 
+  // 🔹 segments에 포함된 speaker 목록 추출
   const uniqueSpeakers = Array.from(
     new Set((segments || []).map((s) => s.speaker))
   );
 
+  // 🔹 index 정보가 붙은 segments (근거 매핑에 필요)
   const indexedSegments = (segments || []).map((seg, idx) => ({
     ...seg,
     _idx: idx,
   }));
 
+  // 🔹 역할별 segment 분리
   const traineeSegments = indexedSegments.filter(
     (seg) => speakerMapping[seg.speaker] === "전공의"
   );
@@ -273,6 +309,7 @@ function App() {
     (seg) => speakerMapping[seg.speaker] === "지도전문의"
   );
 
+  // 🔹 특정 segment index에 해당하는 OSAD 근거 태그들 구하기
   function getOsadTagsForSegment(segIndex) {
     if (!result || !result.evidence || !result.evidence.osad) return [];
     const ev = result.evidence.osad;
@@ -302,52 +339,8 @@ function App() {
       <p style={{ marginBottom: "16px", color: "#555" }}>
         실제 서비스에서는 음성 녹음을 STT로 변환한 텍스트가 이 입력창으로
         들어올 예정입니다. 지금은 테스트를 위해 직접 피드백 문장을 입력하거나,
-        위에서 음성을 녹음해 보세요. 여러 언어로도 실험해 볼 수 있습니다.
+        위에서 음성을 녹음해 보세요.
       </p>
-
-      {/* 🔹 언어 선택 영역 */}
-      <section
-        style={{
-          marginBottom: "12px",
-          padding: "12px 16px",
-          borderRadius: "12px",
-          border: "1px solid #e5e7eb",
-          backgroundColor: "#f9fafb",
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-        }}
-      >
-        <span
-          style={{
-            fontSize: "14px",
-            fontWeight: 600,
-            color: "#111827",
-          }}
-        >
-          사용 언어 (Language)
-        </span>
-        <select
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-          style={{
-            padding: "6px 10px",
-            borderRadius: "8px",
-            border: "1px solid #d1d5db",
-            fontSize: "14px",
-            backgroundColor: "#ffffff",
-          }}
-        >
-          {LANGUAGE_OPTIONS.map((opt) => (
-            <option key={opt.code} value={opt.code}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <span style={{ fontSize: "12px", color: "#6b7280" }}>
-          STT와 OSAD 분석에 동일한 언어 설정이 전달됩니다.
-        </span>
-      </section>
 
       {/* 🔹 1. 음성 녹음 영역 */}
       <section
@@ -436,6 +429,56 @@ function App() {
             {recordingStatus}
           </p>
         )}
+
+        {/* 🔹 STT에서 감지한 언어 + OSAD 언어 선택 */}
+        <div
+          style={{
+            marginTop: "12px",
+            padding: "10px 12px",
+            borderRadius: "10px",
+            backgroundColor: "#eef2ff",
+            border: "1px solid #e5e7eb",
+            fontSize: "13px",
+          }}
+        >
+          {detectedLanguage && (
+            <div style={{ marginBottom: "6px" }}>
+              <strong>자동 감지된 언어(STT):</strong>{" "}
+              {renderDetectedLanguage(detectedLanguage)}
+            </div>
+          )}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "8px",
+              alignItems: "center",
+            }}
+          >
+            <span>
+              <strong>OSAD 코칭 리포트 언어 선택:</strong>
+            </span>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              style={{
+                padding: "4px 8px",
+                borderRadius: "6px",
+                border: "1px solid #d1d5db",
+                fontSize: "13px",
+              }}
+            >
+              {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <span style={{ color: "#6b7280" }}>
+              (자동: 지도전문의 발언 언어를 추론하여 사용, 불분명하면 한국어)
+            </span>
+          </div>
+        </div>
       </section>
 
       {/* 🔹 1-2. 화자별 transcript 미리보기 */}
@@ -569,7 +612,7 @@ function App() {
         </section>
       )}
 
-      {/* 🔹 1-3. 역할별 발언 분리 */}
+      {/* 🔹 1-3. 역할별 발언 분리 (좌: 전공의, 우: 지도전문의) */}
       {segments && segments.length > 0 && (
         <section
           style={{
@@ -887,7 +930,7 @@ function App() {
               OSAD 점수
             </h2>
             <p style={{ marginBottom: "8px", fontSize: "14px", color: "#555" }}>
-              총점: <strong>{result.osad.total}</strong> / {result.osad.scale}
+              총점: <strong>{result.osad.total}</strong>점
             </p>
             <div
               style={{
@@ -922,6 +965,7 @@ function App() {
                 </div>
               ))}
             </div>
+            {/* 근거가 있는 OSAD 차원 목록 간단 표시 */}
             {Object.keys(osadEvidence).length > 0 && (
               <p
                 style={{

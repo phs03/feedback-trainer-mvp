@@ -7,24 +7,43 @@ let API_BASE = "http://127.0.0.1:8000";
 // Vite 환경변수
 const rawApiBase = import.meta.env.VITE_API_BASE_URL;
 
+// 브라우저 환경에서 호스트를 보고 결정
 if (typeof window !== "undefined") {
   const host = window.location.hostname;
-  const isLocalHost = host === "localhost" || host === "127.0.0.1";
-
-  if (isLocalHost) {
-    // 로컬 개발 환경 → 항상 로컬 백엔드
+  if (host === "localhost" || host === "127.0.0.1") {
+    // 로컬 개발 환경 → 무조건 로컬 백엔드 사용
     API_BASE = "http://127.0.0.1:8000";
   } else if (rawApiBase && rawApiBase.trim()) {
-    // 배포 환경 + env가 설정된 경우
+    // 배포 환경 → .env에 지정한 백엔드 URL 사용
     API_BASE = rawApiBase.trim().replace(/\/+$/, "");
-  } else {
-    // 배포 환경인데 env가 비어 있으면, Render 백엔드로 강제 fallback
-    API_BASE = "https://feedback-trainer-mvp.onrender.com";
   }
 }
 
 console.log("[DEBUG] API_BASE =", API_BASE);
 
+const LANGUAGE_LABELS = {
+  auto: "자동 (지도전문의 언어 추론)",
+  ko: "한국어",
+  en: "영어",
+  ja: "일본어",
+  zh: "중국어",
+  es: "스페인어",
+  fr: "프랑스어",
+  de: "독일어",
+};
+
+function normalizeLangCode(code) {
+  if (!code) return null;
+  const base = code.split("-")[0].toLowerCase();
+  return base;
+}
+
+function renderDetectedLanguage(code) {
+  if (!code) return "아직 감지되지 않음";
+  const normalized = normalizeLangCode(code);
+  const label = LANGUAGE_LABELS[normalized] || `코드: ${code}`;
+  return `${label} (${code})`;
+}
 
 function App() {
   const [transcript, setTranscript] = useState(
@@ -40,6 +59,12 @@ function App() {
     SPEAKER_00: "지도전문의",
     SPEAKER_01: "전공의",
   });
+
+  // 🔹 언어 상태
+  // - detectedLanguage: STT에서 자동 감지된 언어 코드 (예: "ko", "en-US")
+  // - language: OSAD 코칭 리포트 언어 선택 (auto / ko / en / ...)
+  const [detectedLanguage, setDetectedLanguage] = useState(null);
+  const [language, setLanguage] = useState("auto");
 
   // 🔹 녹음 관련 상태
   const [isRecording, setIsRecording] = useState(false);
@@ -63,10 +88,10 @@ function App() {
         audio_ref: null,
         transcript: transcript,
         trainee_level: "PGY-2",
-        language: "ko",
+        language: language, // 🔹 선택한 언어를 백엔드로 전달
         context: {
           case: "ER teaching feedback",
-          language: "ko",
+          language: language,
           note: "ui test",
         },
         // 🔹 화자 정보까지 같이 보냄 (나중에 백엔드 evidence에 사용)
@@ -129,6 +154,7 @@ function App() {
         setRecordingStatus("🎙 녹음 중입니다...");
         setAudioUrl(null); // 이전 녹음 URL 초기화
         setSegments([]); // 이전 diarization 결과 초기화
+        setDetectedLanguage(null); // 이전 감지 언어 초기화
       };
 
       mediaRecorder.onstop = async () => {
@@ -218,6 +244,7 @@ function App() {
 
       const sttText = data.transcript || data.text || "";
       const sttSegments = data.segments || [];
+      const sttLang = data.language || null;
 
       if (!sttText && sttSegments.length === 0) {
         setRecordingStatus("⚠ STT 응답에 텍스트/segments가 없습니다.");
@@ -227,6 +254,19 @@ function App() {
         setTranscript(sttText);
       }
       setSegments(sttSegments);
+
+      if (sttLang) {
+        setDetectedLanguage(sttLang);
+
+        const normalized = normalizeLangCode(sttLang);
+        if (normalized && LANGUAGE_LABELS[normalized]) {
+          // 감지된 언어가 우리가 지원하는 언어면 OSAD 언어 기본값을 그걸로
+          setLanguage(normalized);
+        } else {
+          // 잘 모르는 언어 코드는 auto로
+          setLanguage("auto");
+        }
+      }
 
       if (sttText || sttSegments.length > 0) {
         setRecordingStatus(
@@ -391,6 +431,54 @@ function App() {
             {recordingStatus}
           </p>
         )}
+
+        {/* 🔹 STT에서 감지한 언어 + OSAD 언어 선택 */}
+        <div
+          style={{
+            marginTop: "12px",
+            padding: "10px 12px",
+            borderRadius: "10px",
+            backgroundColor: "#eef2ff",
+            border: "1px solid #e5e7eb",
+            fontSize: "13px",
+          }}
+        >
+          <div style={{ marginBottom: "6px" }}>
+            <strong>자동 감지된 언어(STT):</strong>{" "}
+            {renderDetectedLanguage(detectedLanguage)}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "8px",
+              alignItems: "center",
+            }}
+          >
+            <span>
+              <strong>OSAD 코칭 리포트 언어 선택:</strong>
+            </span>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              style={{
+                padding: "4px 8px",
+                borderRadius: "6px",
+                border: "1px solid #d1d5db",
+                fontSize: "13px",
+              }}
+            >
+              {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <span style={{ color: "#6b7280" }}>
+              (자동: 지도전문의 발언 언어를 추론하여 사용, 불분명하면 한국어)
+            </span>
+          </div>
+        </div>
       </section>
 
       {/* 🔹 1-2. 화자별 transcript 미리보기 */}

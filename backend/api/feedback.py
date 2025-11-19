@@ -37,6 +37,8 @@ class FeedbackRequest(BaseModel):
 
     context: Optional[FeedbackContext] = None
     segments: Optional[List[Segment]] = None
+    # 🔹 프론트에서 보내는 SPEAKER_00 → "지도전문의"/"전공의" 매핑
+    speaker_mapping: Optional[Dict[str, str]] = None
 
 
 router = APIRouter(tags=["feedback"])
@@ -93,7 +95,7 @@ async def analyze_feedback(payload: FeedbackRequest) -> Dict[str, Any]:
 
     transcript = payload.transcript.strip()
 
-    # ---------- segments를 인덱스와 함께 문자열로 나열 ----------
+    # ---------- segments 전체를 인덱스와 함께 문자열로 나열 (디버깅 & evidence 용) ----------
     if payload.segments:
         lines = []
         for idx, seg in enumerate(payload.segments):
@@ -105,6 +107,17 @@ async def analyze_feedback(payload: FeedbackRequest) -> Dict[str, Any]:
     else:
         segments_desc = "(segments not provided)"
 
+    # ---------- speaker_mapping을 이용해 '지도전문의 발언'만 따로 모으기 ----------
+    supervisor_only_text = ""
+    if payload.segments and payload.speaker_mapping:
+        supervisor_lines: List[str] = []
+        for seg in payload.segments:
+            role = payload.speaker_mapping.get(seg.speaker)
+            if role == "지도전문의":
+                supervisor_lines.append(seg.text)
+        if supervisor_lines:
+            supervisor_only_text = "\n".join(supervisor_lines)
+
     context_desc = ""
     if payload.context:
         context_desc = (
@@ -113,9 +126,7 @@ async def analyze_feedback(payload: FeedbackRequest) -> Dict[str, Any]:
         )
 
     # ---------- 출력 언어 결정 ----------
-    # 프론트에서 온 language 코드에 따라 코칭 리포트 언어를 설정
     lang_code = (payload.language or "ko").lower()
-
     lang_name_map = {
         "ko": "Korean",
         "en": "English",
@@ -124,12 +135,27 @@ async def analyze_feedback(payload: FeedbackRequest) -> Dict[str, Any]:
         "ja": "Japanese",
         "fr": "French",
         "de": "German",
-        "auto": "the most appropriate language for the conversation",
+        "auto": "auto",  # 아래 lang_instruction에서 따로 처리
     }
+    output_lang_name = lang_name_map.get(
+        lang_code, "the same language as the conversation"
+    )
 
-    output_lang_name = lang_name_map.get(lang_code, "the same language as the conversation")
+    # ---------- 언어 지침 문장 ----------
+    if lang_code == "auto":
+        # 자동 모드: 지도전문의 발언의 언어를 추론해서 그 언어로 쓰게 지시
+        lang_instruction = (
+            "Infer the primary language used by the supervisor in the conversation "
+            "(especially from the 'Supervisor-only speech' section). "
+            "Write all explanation texts (strings) in that language. "
+            "If you cannot clearly infer the language, default to Korean."
+        )
+    else:
+        lang_instruction = (
+            f"Write all explanation texts (strings) in {output_lang_name}."
+        )
 
-    # ---------- 프롬프트 구성 ----------
+    # ---------- system 프롬프트 ----------
     system_prompt = (
         "You are an expert in medical education and feedback, "
         "using the OSAD (Objective Structured Assessment of Debriefing) framework.\n"
@@ -177,23 +203,45 @@ async def analyze_feedback(payload: FeedbackRequest) -> Dict[str, Any]:
         "}\n\n"
         "All evidence indices must refer to the segment indices given in the input.\n"
         "Use only indices that exist. If there is no clear evidence, use an empty list.\n"
-        f"Write all explanation texts (strings) in {output_lang_name}.\n"
+        f"{lang_instruction}\n"
+        "If only the supervisor's speech is provided separately, "
+        "focus your OSAD scoring and coaching mainly on the supervisor's feedback behaviour.\n"
     )
 
+    # ---------- user 프롬프트 ----------
+    user_prompt_parts = [
+        f"Language code from client: {payload.language}",
+        f"Trainee level: {payload.trainee_level}",
+        f"Context: {context_desc}",
+        "",
+        "Full conversation transcript:",
+        "------------------------------------",
+        transcript,
+        "",
+        "Segments with indices:",
+        "------------------------------------",
+        segments_desc,
+    ]
 
-    user_prompt = (
-        f"Language: {payload.language}\n"
-        f"Trainee level: {payload.trainee_level}\n"
-        f"Context: {context_desc}\n\n"
-        "Conversation transcript (full text):\n"
-        "------------------------------------\n"
-        f"{transcript}\n\n"
-        "Segments with indices:\n"
-        "------------------------------------\n"
-        f"{segments_desc}\n\n"
-        "Now analyze this feedback conversation using the OSAD framework and "
+    if supervisor_only_text:
+        user_prompt_parts.extend(
+            [
+                "",
+                "Supervisor-only speech (extracted from segments based on speaker_mapping):",
+                "------------------------------------",
+                supervisor_only_text,
+                "",
+                "When scoring OSAD and generating coaching tips, "
+                "prioritize the supervisor-only speech above.",
+            ]
+        )
+
+    user_prompt_parts.append(
+        "\nNow analyze this feedback conversation using the OSAD framework and "
         "respond ONLY with a JSON object following the required schema."
     )
+
+    user_prompt = "\n".join(user_prompt_parts)
 
     try:
         # ---------- ChatCompletion 호출 (JSON 모드) ----------
