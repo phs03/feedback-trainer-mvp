@@ -1,35 +1,49 @@
 # backend/db.py
 
 import os
+from dotenv import load_dotenv
+from pathlib import Path
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# 1) DATABASE_URL 읽기
-#    - Render / 로컬 둘 다 여기서 통일
+ROOT_DIR = Path(__file__).resolve().parents[1]
+ENV_PATH = ROOT_DIR / ".env"
+
+if ENV_PATH.exists():
+    load_dotenv(ENV_PATH)
+    print("=== DEBUG[db]: .env 로드됨 ===", ENV_PATH)
+else:
+    print("=== DEBUG[db]: .env 파일 없음 ===", ENV_PATH)
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    # 로컬 개발 기본값: SQLite 파일
     print("⚠ DATABASE_URL not found — fallback to SQLite")
-    DATABASE_URL = "sqlite:///./feedback.db"
+    DATABASE_URL = "sqlite:///./local.db"
+else:
+    print("=== DEBUG[db]: USING DATABASE_URL ===", DATABASE_URL)
 
-print("=== DEBUG[db]: USING DATABASE_URL ===", DATABASE_URL)
-
-# 2) 엔진 생성
-#    - SQLite일 때만 check_same_thread 옵션 필요
-connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},
+    )
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
+    )
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args=connect_args,
-)
-
-# 3) 세션 / Base
-SessionLocal = sessionmaker(
-    bind=engine,
-    autoflush=False,
-    autocommit=False,
-)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
