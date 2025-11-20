@@ -5,10 +5,6 @@ from backend.db import Base
 
 
 class DbHealthCheck(Base):
-    """
-    DB 연결 테스트용 간단한 테이블
-    /debug/db-test 엔드포인트에서 한 줄 INSERT해서 확인한다.
-    """
     __tablename__ = "db_health_check"
 
     id = Column(Integer, primary_key=True, index=True)
