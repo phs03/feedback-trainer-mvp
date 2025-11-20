@@ -5,12 +5,14 @@ import io
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException
 from dotenv import load_dotenv
 from openai import OpenAI
 
 # ----------------------------------------------------
 # 1) 프로젝트 루트(ai_feedback_mvp/.env)에서 .env 로드
+#    stt.py 위치: ai_feedback_mvp/backend/api/stt.py
+#    parents[2] => ai_feedback_mvp
 # ----------------------------------------------------
 ROOT_DIR = Path(__file__).resolve().parents[2]   # .../ai_feedback_mvp
 ENV_PATH = ROOT_DIR / ".env"
@@ -41,18 +43,13 @@ router = APIRouter(prefix="/api", tags=["stt"])
 
 
 @router.post("/stt")
-async def transcribe_audio(
-    file: UploadFile = File(...),
-    # 프론트에서 FormData로 넘기는 language (예: "ko", "en", "ja", "auto"...)
-    language: str = Form("auto"),
-):
+async def transcribe_audio(file: UploadFile = File(...)):
     """
-    음성 파일을 STT + (모델이 지원하면) Speaker Diarization까지 수행하는 엔드포인트
+    음성 파일을 STT + Speaker Diarization까지 수행하는 엔드포인트
 
     🔹 요청
-      - FormData:
-        - file: <audio>
-        - language: "auto" | "ko" | "en" | "zh" | "es" | "ja" | "fr" | "de" ...
+      - FormData: { file: <audio> }
+      - content_type: audio/* (webm, wav 등)
 
     🔹 응답 예시(JSON)
     {
@@ -94,19 +91,13 @@ async def transcribe_audio(
         audio_buffer.name = file.filename or "recording.webm"
 
         print("=== DEBUG: STT 호출 시작 ===")
-        print("=== DEBUG: 요청 language ===", language)
-
-        # 🔥 STT + (diarization) 호출
-        # language = "auto" 이면 모델에 맡기고, 명시된 경우만 강제로 전달
-        kwargs = {
-            "model": "gpt-4o-transcribe-diarize",  # 계정에서 지원되는 모델명
-            "file": audio_buffer,
-            "response_format": "diarized_json",
-        }
-        if language and language != "auto":
-            kwargs["language"] = language
-
-        resp = client.audio.transcriptions.create(**kwargs)
+        # 🔥 STT + Speaker Diarization 호출 (언어 자동 감지)
+        resp = client.audio.transcriptions.create(
+            model="gpt-4o-transcribe-diarize",
+            file=audio_buffer,
+            response_format="diarized_json",
+            # language 파라미터를 주지 않아서 자동 감지
+        )
 
         print("=== DEBUG: STT raw resp type ===", type(resp))
 
@@ -132,22 +123,18 @@ async def transcribe_audio(
         print("=== DEBUG: STT data ===", data)
 
         text = data.get("text")
-        detected_language = data.get("language")
+        language = data.get("language")
         segments = data.get("segments") or []
-
-        result_language = language if language and language != "auto" else detected_language
 
         result = {
             "text": text,
-            "language": result_language,
+            "language": language,
             "segments": segments,
             # ✅ 기존 프론트에서 쓰던 필드와 호환
             "transcript": text,
         }
 
         print("=== DEBUG: STT result to client ===", result)
-
-        # 항상 dict 리턴 → FastAPI가 JSON으로 직렬화
         return result
 
     except Exception as e:

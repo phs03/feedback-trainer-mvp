@@ -1,19 +1,12 @@
-﻿# backend/main.py
-
-import os
+﻿import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
-# 🔹 DB 관련 import
-from backend.db import Base, engine
-import backend.models  # DbHealthCheck 등 모델 로딩
 
 # 🔹 STT 라우터 + OpenAI client 같이 가져오기
 from backend.api.stt import router as stt_router, client as stt_client
 from backend.api.feedback import router as feedback_router
 from backend.api.report import router as report_router
-from backend.api.db_test import router as db_debug_router  # ✅ 새로 추가
 
 app = FastAPI(title="AI Feedback MVP", version="0.1.0")
 
@@ -28,6 +21,8 @@ default_origins = [
     "https://feedback-trainer-mvp.vercel.app",
 ]
 
+# ALLOWED_ORIGINS 환경변수에서 가져오기
+# 예: "https://feedback-trainer-mvp.vercel.app,http://localhost:5173"
 env_origins = [
     o.strip()
     for o in os.getenv("ALLOWED_ORIGINS", "").split(",")
@@ -39,11 +34,14 @@ if env_origins:
 else:
     origins = default_origins
 
-# 지금은 임시로 모두 허용 (배포 안정화 후 origins로 바꿔도 됨)
+print("=== CORS ALLOW_ORIGINS ===")
+for o in origins:
+    print(" -", o)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
+    allow_credentials=False,  # 쿠키/세션 안 쓰면 False로 두는 편이 CORS 쪽 덜 까다로움
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -57,15 +55,6 @@ print("=== CORS ALLOW_ORIGINS === * (all origins allowed)")
 class HealthResponse(BaseModel):
     status: str
     version: str
-
-# 🔹 서버 시작 시 DB 테이블 생성
-@app.on_event("startup")
-def on_startup():
-    """
-    서버 시작 시 한 번 DB 테이블 생성 (이미 있으면 그대로 둠)
-    """
-    Base.metadata.create_all(bind=engine)
-    print("=== DB 테이블 생성/확인 완료 ===")
 
 # 루트 엔드포인트
 @app.get("/", response_model=HealthResponse)
@@ -84,7 +73,6 @@ def health():
 app.include_router(stt_router)
 app.include_router(feedback_router)
 app.include_router(report_router)
-app.include_router(db_debug_router)  # ✅ debug/db-test 라우터 추가
 
 
 @app.get("/healthz", response_model=HealthResponse)
@@ -99,7 +87,9 @@ def healthz():
 def readyz():
     """
     Readiness Probe: 서버가 요청을 처리할 준비가 되었는지 확인
+    - 나중에 DB 연결, 모델 로딩 상태 등을 여기에 추가
     """
+    # TODO: 모델 로딩, DB 체크 등 추가
     return HealthResponse(status="ready", version="0.1.0")
 
 
