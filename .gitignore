@@ -79,3 +79,5 @@ backend/uploads/
 *.webm
 *.wav
 *.mp3
+local.db
+*.db
