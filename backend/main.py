@@ -4,6 +4,9 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+import time
 
 # 🔹 DB 관련
 from backend.db import Base, engine
@@ -35,6 +38,12 @@ app.add_middleware(
 )
 
 print("=== CORS ALLOW_ORIGINS === * (all origins allowed)")
+# =========================
+# 런타임 상태 플래그 (Render 진단용)
+# =========================
+APP_STARTED_AT = time.time()
+DB_READY = False
+DB_LAST_ERROR = None
 
 
 # =========================
@@ -51,12 +60,48 @@ class HealthResponse(BaseModel):
 @app.on_event("startup")
 def on_startup():
     """
-    앱 시작 시 SQLAlchemy 모델(backend.models)을 기준으로
-    연결된 DB에 테이블을 생성/확인한다.
+    배포 환경(Render)에서는 DB 연결 문제가 있을 수 있으므로,
+    startup에서 DB 실패가 앱 전체 기동 실패로 이어지지 않게 한다.
+    - healthz: 앱 프로세스 생존 여부 (DB 무관)
+    - readyz: DB까지 포함한 준비 상태
     """
-    print("=== DB 테이블 생성/확인 시작 ===")
-    Base.metadata.create_all(bind=engine)
-    print("=== DB 테이블 생성/확인 완료 ===")
+    global DB_READY, DB_LAST_ERROR
+
+    print("=== STARTUP: 앱 기동 시작 ===")
+    DB_READY = False
+    DB_LAST_ERROR = None
+
+    # 1) DB 연결 체크 (짧게)
+    try:
+        print("=== STARTUP: DB 연결 체크 시작 ===")
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print("=== STARTUP: DB 연결 체크 OK ===")
+    except SQLAlchemyError as e:
+        DB_LAST_ERROR = f"DB connect failed: {e}"
+        print(f"=== STARTUP: DB 연결 실패 === {DB_LAST_ERROR}")
+        # DB가 안 돼도 앱은 떠야 하므로 return 하지 않고 계속 진행
+        return
+    except Exception as e:
+        DB_LAST_ERROR = f"Unexpected DB error: {e}"
+        print(f"=== STARTUP: DB 예외 === {DB_LAST_ERROR}")
+        return
+
+    # 2) 테이블 생성/확인 (DB가 되는 경우에만)
+    try:
+        print("=== STARTUP: DB 테이블 생성/확인 시작 ===")
+        Base.metadata.create_all(bind=engine)
+        DB_READY = True
+        print("=== STARTUP: DB 테이블 생성/확인 완료 (DB_READY=True) ===")
+    except SQLAlchemyError as e:
+        DB_LAST_ERROR = f"DB create_all failed: {e}"
+        DB_READY = False
+        print(f"=== STARTUP: DB 테이블 생성 실패 === {DB_LAST_ERROR}")
+    except Exception as e:
+        DB_LAST_ERROR = f"Unexpected create_all error: {e}"
+        DB_READY = False
+        print(f"=== STARTUP: create_all 예외 === {DB_LAST_ERROR}")
+
 
 
 # =========================
@@ -75,14 +120,29 @@ def health():
     return HealthResponse(status="ok", version="0.1.0")
 
 
-@app.get("/healthz", response_model=HealthResponse)
+
+@app.get("/healthz")
 def healthz():
-    return HealthResponse(status="alive", version="0.1.0")
+    # DB와 무관하게 프로세스가 떠 있으면 OK
+    uptime_sec = int(time.time() - APP_STARTED_AT)
+    return {"status": "alive", "uptime_sec": uptime_sec, "version": "0.1.0"}
 
 
-@app.get("/readyz", response_model=HealthResponse)
+
+@app.get("/readyz")
 def readyz():
-    return HealthResponse(status="ready", version="0.1.0")
+    # DB까지 준비되면 ready
+    if DB_READY:
+        return {"status": "ready", "db": "ok", "version": "0.1.0"}
+
+    # DB가 아직 준비 안 된 경우, 원인 노출(배포 진단용)
+    return {
+        "status": "not_ready",
+        "db": "not_ready",
+        "error": DB_LAST_ERROR,
+        "version": "0.1.0",
+    }
+
 
 
 # =========================
