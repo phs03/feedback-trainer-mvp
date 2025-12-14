@@ -21,6 +21,21 @@ if (typeof window !== "undefined") {
 
 console.log("[DEBUG] API_BASE =", API_BASE);
 
+// --- 피드백 상황/스케일 옵션 ---
+// value: scenario_code, scaleCode: scale_code
+const SCENARIO_OPTIONS = [
+  {
+    value: "EM_DEBRIEF",
+    label: "시뮬레이션 디브리핑 (OSAD)",
+    scaleCode: "OSAD_DEBRIEFER",
+  },
+  {
+    value: "CLINICAL_OMP",
+    label: "임상 진료 후 피드백 (One-Minute Preceptor)",
+    scaleCode: "OMP_CORE_FIVE",
+  },
+];
+
 const LANGUAGE_LABELS = {
   auto: "자동 (Auto)",
   ko: "한국어 (Korean)",
@@ -53,6 +68,10 @@ function App() {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
 
+  // 🔹 선택된 시나리오/스케일 상태
+  const [scenarioCode, setScenarioCode] = useState("EM_DEBRIEF");
+  const [scaleCode, setScaleCode] = useState("OSAD_DEBRIEFER");
+
   // 🔹 STT diarization 결과
   const [segments, setSegments] = useState([]);
   const [speakerMapping, setSpeakerMapping] = useState({
@@ -71,34 +90,76 @@ function App() {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  // 🔹 OSAD 분석 API 호출
+  // 🔹 코칭 리포트 평가 상태 (도움 정도 1~5)
+  const [coachEvalScore, setCoachEvalScore] = useState(null);
+  const [coachEvalSending, setCoachEvalSending] = useState(false);
+  const [coachEvalDone, setCoachEvalDone] = useState(false);
+  const [coachEvalError, setCoachEvalError] = useState("");
+
+  // 🔹 "어느 항목을 기록(저장)할지" 체크 상태
+  //    키: strengths / improvements_top3 / script_next_time / micro_habit_10sec
+  const [recordFlags, setRecordFlags] = useState([]);
+
+  // 🔹 기록 저장 상태
+  const [coachMemoSending, setCoachMemoSending] = useState(false);
+  const [coachMemoDone, setCoachMemoDone] = useState(false);
+  const [coachMemoError, setCoachMemoError] = useState("");
+
+  // 🔹 시나리오 선택 변경
+  function handleScenarioChange(e) {
+    const value = e.target.value;
+    setScenarioCode(value);
+    const found = SCENARIO_OPTIONS.find((opt) => opt.value === value);
+    if (found) {
+      setScaleCode(found.scaleCode);
+    }
+  }
+
+  // 🔹 "기록" 체크 토글 함수
+  function toggleRecordFlag(flag) {
+    setRecordFlags((prev) =>
+      prev.includes(flag) ? prev.filter((f) => f !== flag) : [...prev, flag]
+    );
+  }
+
+  // 🔹 분석 API 호출
   async function handleAnalyze(e) {
     e.preventDefault();
     setLoading(true);
     setError("");
     setResult(null);
 
+    // 새 분석 시작 시 평가/기록 관련 상태 초기화
+    setCoachEvalScore(null);
+    setCoachEvalDone(false);
+    setCoachEvalError("");
+    setRecordFlags([]);
+    setCoachMemoSending(false);
+    setCoachMemoDone(false);
+    setCoachMemoError("");
+
     try {
       const payload = {
-        encounter_id: "UI-TEST-001",
+        encounter_id: "UI-TEST-001", // TODO: 나중에 실제 encounter_id로 변경
         supervisor_id: "S-UI-001",
         trainee_id: "T-UI-001",
         audio_ref: null,
         transcript: transcript,
         trainee_level: "PGY-2",
-        language: language, // 🔹 선택한 언어를 백엔드로 전달
+        language: language,
+        scale_code: scaleCode,
+        scenario_code: scenarioCode,
         context: {
           case: "ER teaching feedback",
           language: language,
           note: "ui test",
         },
-        // 🔹 화자 정보까지 같이 보냄 (나중에 백엔드 evidence에 사용)
         segments: segments,
-        speaker_mapping: speakerMapping, // 🔹 SPEAKER_00 → "지도전문의"/"전공의" 정보 전달
+        speaker_mapping: speakerMapping,
       };
 
       const url = `${API_BASE}/feedback`;
-      console.log("[DEBUG] OSAD 요청 URL:", url);
+      console.log("[DEBUG] 분석 요청 URL:", url, payload);
 
       const res = await fetch(url, {
         method: "POST",
@@ -115,7 +176,7 @@ function App() {
       }
 
       const data = await res.json();
-      console.log("[DEBUG] OSAD 응답:", data);
+      console.log("[DEBUG] 분석 응답:", data);
       setResult(data);
     } catch (err) {
       console.error(err);
@@ -150,9 +211,9 @@ function App() {
       mediaRecorder.onstart = () => {
         setIsRecording(true);
         setRecordingStatus("🎙 녹음 중입니다... (Recording)");
-        setAudioUrl(null); // 이전 녹음 URL 초기화
-        setSegments([]); // 이전 diarization 결과 초기화
-        setDetectedLanguage(null); // 이전 감지 언어 초기화
+        setAudioUrl(null);
+        setSegments([]);
+        setDetectedLanguage(null);
       };
 
       mediaRecorder.onstop = async () => {
@@ -268,10 +329,8 @@ function App() {
 
         const normalized = normalizeLangCode(sttLang);
         if (normalized && LANGUAGE_LABELS[normalized]) {
-          // 감지된 언어가 우리가 지원하는 언어면 OSAD 언어 기본값을 그걸로
           setLanguage(normalized);
         } else {
-          // 잘 모르는 언어 코드는 auto로
           setLanguage("auto");
         }
       }
@@ -310,13 +369,13 @@ function App() {
     new Set((segments || []).map((s) => s.speaker))
   );
 
-  // 🔹 index 정보가 붙은 segments (근거 매핑에 필요)
+  // 🔹 index 정보가 붙은 segments
   const indexedSegments = (segments || []).map((seg, idx) => ({
     ...seg,
     _idx: idx,
   }));
 
-  // 🔹 역할별 segment 분리 (내부 값은 한글 그대로 사용)
+  // 🔹 역할별 segment 분리
   const traineeSegments = indexedSegments.filter(
     (seg) => speakerMapping[seg.speaker] === "전공의"
   );
@@ -324,7 +383,7 @@ function App() {
     (seg) => speakerMapping[seg.speaker] === "지도전문의"
   );
 
-  // 🔹 특정 segment index에 해당하는 OSAD 근거 태그들 구하기
+  // 🔹 특정 segment index에 해당하는 OSAD/OMP 근거 태그들 구하기
   function getOsadTagsForSegment(segIndex) {
     if (!result || !result.evidence || !result.evidence.osad) return [];
     const ev = result.evidence.osad;
@@ -339,6 +398,161 @@ function App() {
 
   const osadEvidence = result?.evidence?.osad || {};
 
+  // 🔹 점수/퍼센트 계산 (백엔드에서 준 scale 사용)
+  const osadTotal =
+    result && result.osad && typeof result.osad.total === "number"
+      ? result.osad.total
+      : null;
+
+  const osadScale =
+    result && result.osad && typeof result.osad.scale === "number"
+      ? result.osad.scale
+      : 45;
+
+  const osadPercent =
+    osadTotal !== null && osadScale > 0
+      ? Math.round((osadTotal / osadScale) * 1000) / 10
+      : null;
+
+  const osadPercentClamped =
+    typeof osadPercent === "number"
+      ? Math.min(100, Math.max(0, osadPercent))
+      : 0;
+
+  // 🔹 코칭 리포트 평가 전송 함수 (도움 정도 1~5)
+  async function handleCoachEval(score) {
+    if (!result) return;
+    if (coachEvalSending || coachEvalDone) return;
+
+    setCoachEvalError("");
+    setCoachEvalSending(true);
+    setCoachEvalScore(score);
+
+    try {
+      const payload = {
+        encounter_id: "UI-TEST-001",
+        scenario_code: scenarioCode,
+        scale_code: scaleCode,
+        model_version: "gpt-4o-mini-osad-v1",
+        helpful_score: score,
+        helpful_flags: recordFlags.length ? recordFlags : null,
+        comment: null,
+      };
+
+      const url = `${API_BASE}/feedback/coach-eval`;
+      console.log("[DEBUG] coach-eval 요청 URL:", url, payload);
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`coach-eval 서버 오류: ${res.status} - ${text}`);
+      }
+
+      const data = await res.json();
+      console.log("[DEBUG] coach-eval 응답:", data);
+      setCoachEvalDone(true);
+    } catch (err) {
+      console.error(err);
+      setCoachEvalError(
+        err.message || "코칭 리포트 평가 전송 중 오류가 발생했습니다."
+      );
+    } finally {
+      setCoachEvalSending(false);
+    }
+  }
+
+  // 🔹 "기록"으로 체크된 섹션들을 실제로 저장하는 함수
+  async function handleSaveCoachMemo() {
+    if (!result) return;
+
+    setCoachMemoError("");
+    setCoachMemoDone(false);
+
+    const selected = {};
+
+    if (recordFlags.includes("strengths")) {
+      const lines = Array.isArray(result.coach.strengths)
+        ? result.coach.strengths
+        : [];
+      if (lines.length > 0) {
+        selected.strengths = lines.join("\n");
+      }
+    }
+
+    if (recordFlags.includes("improvements_top3")) {
+      const lines = Array.isArray(result.coach.improvements_top3)
+        ? result.coach.improvements_top3
+        : [];
+      if (lines.length > 0) {
+        selected.improvements_top3 = lines.join("\n");
+      }
+    }
+
+    if (recordFlags.includes("script_next_time")) {
+      if (result.coach.script_next_time) {
+        selected.script_next_time = result.coach.script_next_time;
+      }
+    }
+
+    if (recordFlags.includes("micro_habit_10sec")) {
+      if (result.coach.micro_habit_10sec) {
+        selected.micro_habit_10sec = result.coach.micro_habit_10sec;
+      }
+    }
+
+    if (Object.keys(selected).length === 0) {
+      setCoachMemoError(
+        "기록할 항목을 최소 1개 이상 선택해 주세요. (각 제목 옆 '기록' 체크)"
+      );
+      return;
+    }
+
+    setCoachMemoSending(true);
+
+    try {
+      const payload = {
+        encounter_id: "UI-TEST-001",
+        supervisor_id: "S-UI-001",
+        trainee_id: "T-UI-001",
+        scenario_code: scenarioCode,
+        scale_code: scaleCode,
+        model_version: "gpt-4o-mini-osad-v1",
+        saved_sections: selected,
+        note: null,
+      };
+
+      const url = `${API_BASE}/feedback/coach-memo`;
+      console.log("[DEBUG] coach-memo 요청 URL:", url, payload);
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`coach-memo 서버 오류: ${res.status} - ${text}`);
+      }
+
+      const data = await res.json();
+      console.log("[DEBUG] coach-memo 응답:", data);
+      setCoachMemoDone(true);
+    } catch (err) {
+      console.error(err);
+      setCoachMemoError(
+        err.message || "코칭 리포트 기록 저장 중 오류가 발생했습니다."
+      );
+    } finally {
+      setCoachMemoSending(false);
+    }
+  }
+
   return (
     <div
       style={{
@@ -349,13 +563,65 @@ function App() {
       }}
     >
       <h1 style={{ fontSize: "24px", fontWeight: 700, marginBottom: "8px" }}>
-        지도전문의 피드백 OSAD 분석 (MVP)
+        지도전문의 피드백 분석 (MVP)
       </h1>
       <p style={{ marginBottom: "16px", color: "#555" }}>
         실제 서비스에서는 음성 녹음을 STT로 변환한 텍스트가 이 입력창으로
         들어올 예정입니다. 지금은 테스트를 위해 직접 피드백 문장을 입력하거나,
         위에서 음성을 녹음해 보세요.
       </p>
+
+      {/* 🔹 시나리오 / 스케일 선택 */}
+      <section
+        style={{
+          marginBottom: "16px",
+          padding: "12px 16px",
+          borderRadius: "12px",
+          border: "1px solid #e5e7eb",
+          backgroundColor: "#f3f4ff",
+          fontSize: "14px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            gap: "8px",
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <span style={{ fontWeight: 600 }}>피드백 상황 선택:</span>
+          <select
+            value={scenarioCode}
+            onChange={handleScenarioChange}
+            style={{
+              padding: "4px 8px",
+              borderRadius: "6px",
+              border: "1px solid #d1d5db",
+              fontSize: "14px",
+            }}
+          >
+            {SCENARIO_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <span style={{ color: "#6b7280", fontSize: "13px" }}>
+            (시뮬레이션 디브리핑 / 임상 진료 후 피드백 중 선택)
+          </span>
+        </div>
+        <div
+          style={{
+            marginTop: "4px",
+            fontSize: "12px",
+            color: "#6b7280",
+          }}
+        >
+          API에 전송되는 scale_code: <code>{scaleCode}</code>, scenario_code:{" "}
+          <code>{scenarioCode}</code>
+        </div>
+      </section>
 
       {/* 🔹 1. 음성 녹음 영역 */}
       <section
@@ -544,7 +810,6 @@ function App() {
                     }}
                   >
                     <option value={spk}>{spk}</option>
-                    {/* 값은 한글 그대로 두고, 라벨만 이중언어 */}
                     <option value="지도전문의">지도전문의 (Supervisor)</option>
                     <option value="전공의">전공의 (Resident)</option>
                     <option value="기타">기타 (Other)</option>
@@ -589,9 +854,8 @@ function App() {
                       {renderSpeakerLabel(seg.speaker)}
                     </span>
                     <span>
-                      {seg.start?.toFixed ? seg.start.toFixed(1) : seg.start} s
-                      {" ~ "}
-                      {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
+                      {seg.start?.toFixed ? seg.start.toFixed(1) : seg.start} s{" "}
+                      ~ {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
                     </span>
                   </div>
                   <div style={{ marginBottom: tags.length ? "4px" : 0 }}>
@@ -628,7 +892,7 @@ function App() {
         </section>
       )}
 
-      {/* 🔹 1-3. 역할별 발언 분리 (좌: 전공의, 우: 지도전문의) */}
+      {/* 🔹 1-3. 역할별 발언 분리 */}
       {segments && segments.length > 0 && (
         <section
           style={{
@@ -866,7 +1130,7 @@ function App() {
         </section>
       )}
 
-      {/* 🔹 2. 텍스트 입력 + OSAD 분석 */}
+      {/* 🔹 2. 텍스트 입력 + 분석 */}
       <form onSubmit={handleAnalyze}>
         <label
           htmlFor="transcript"
@@ -905,7 +1169,9 @@ function App() {
               color: "white",
             }}
           >
-            {loading ? "분석 중... (Analyzing)" : "OSAD 분석하기 (Analyze OSAD)"}
+            {loading
+              ? "분석 중... (Analyzing)"
+              : "피드백 분석하기 (Analyze feedback)"}
           </button>
         </div>
       </form>
@@ -928,7 +1194,7 @@ function App() {
 
       {result && (
         <div style={{ marginTop: "24px", display: "grid", gap: "16px" }}>
-          {/* OSAD 점수 요약 */}
+          {/* 점수 요약 */}
           <section
             style={{
               padding: "16px",
@@ -944,47 +1210,75 @@ function App() {
                 marginBottom: "8px",
               }}
             >
-              OSAD 점수 (Scores)
+              점수 요약 (Scores)
             </h2>
-            <p style={{ marginBottom: "8px", fontSize: "14px", color: "#555" }}>
+
+            <p style={{ marginBottom: "6px", fontSize: "14px", color: "#555" }}>
               총점 (Total score):{" "}
-              <strong>{result.osad.total}</strong>
-              점
+              <strong>{osadTotal !== null ? osadTotal : "-"}</strong>
+              점 / <strong>{osadScale}</strong>점{" "}
+              {typeof osadPercent === "number" && (
+                <>
+                  {" "}
+                  (<strong>{osadPercent}%</strong>)
+                </>
+              )}
             </p>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-                gap: "4px 12px",
-                fontSize: "13px",
-              }}
-            >
-              {[
-                "approach",
-                "learning_env",
-                "engagement",
-                "reaction",
-                "reflection",
-                "analysis",
-                "diagnosis",
-                "application",
-                "summary",
-              ].map((key) => (
+
+            {typeof osadPercent === "number" && (
+              <div
+                style={{
+                  width: "100%",
+                  height: "12px",
+                  borderRadius: "999px",
+                  border: "1px solid #e5e7eb",
+                  overflow: "hidden",
+                  marginBottom: "12px",
+                  backgroundColor: "#f3f4f6",
+                }}
+              >
                 <div
-                  key={key}
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    borderBottom: "1px dashed #e5e7eb",
-                    paddingBottom: "2px",
+                    width: osadPercentClamped + "%",
+                    height: "100%",
+                    backgroundColor: "#4caf50",
+                    transition: "width 0.3s ease",
                   }}
-                >
-                  <span>{key}</span>
-                  <span>{result.osad[key]}</span>
-                </div>
-              ))}
-            </div>
-            {/* 근거가 있는 OSAD 차원 목록 간단 표시 */}
+                />
+              </div>
+            )}
+
+            {/* 차원별 점수 (백엔드에서 오는 키 사용) */}
+            {result.osad && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                  gap: "4px 12px",
+                  fontSize: "13px",
+                }}
+              >
+                {Object.entries(result.osad)
+                  .filter(
+                    ([key]) =>
+                      !["total", "scale", "percent"].includes(key)
+                  )
+                  .map(([key, val]) => (
+                    <div
+                      key={key}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        borderBottom: "1px dashed #e5e7eb",
+                        paddingBottom: "2px",
+                      }}
+                    >
+                      <span>{key}</span>
+                      <span>{val}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
             {Object.keys(osadEvidence).length > 0 && (
               <p
                 style={{
@@ -1000,122 +1294,385 @@ function App() {
           </section>
 
           {/* 구조 분석 */}
-          <section
-            style={{
-              padding: "16px",
-              borderRadius: "12px",
-              border: "1px solid #e5e7eb",
-              backgroundColor: "#f9fafb",
-            }}
-          >
-            <h2
+          {result.structure && (
+            <section
               style={{
-                fontSize: "18px",
-                fontWeight: 600,
-                marginBottom: "8px",
+                padding: "16px",
+                borderRadius: "12px",
+                border: "1px solid #e5e7eb",
+                backgroundColor: "#f9fafb",
               }}
             >
-              구조 분석 (Structure: Opening / Core / Closing)
-            </h2>
-            <ul style={{ listStyle: "none", paddingLeft: 0, fontSize: "14px" }}>
-              <li>
-                {result.structure.has_opening ? "✅" : "❌"} Opening (전공의
-                의견/생각을 묻는 시작)
-              </li>
-              <li>
-                {result.structure.has_core ? "✅" : "❌"} Core (관찰·이유·결과 등
-                핵심 내용)
-              </li>
-              <li>
-                {result.structure.has_closing ? "✅" : "❌"} Closing (요약·다음
-                단계 제시)
-              </li>
-            </ul>
-          </section>
+              <h2
+                style={{
+                  fontSize: "18px",
+                  fontWeight: 600,
+                  marginBottom: "8px",
+                }}
+              >
+                구조 분석 (Structure: Opening / Core / Closing)
+              </h2>
+              <ul
+                style={{ listStyle: "none", paddingLeft: 0, fontSize: "14px" }}
+              >
+                <li>
+                  {result.structure.has_opening ? "✅" : "❌"} Opening (전공의
+                  의견/생각을 묻는 시작)
+                </li>
+                <li>
+                  {result.structure.has_core ? "✅" : "❌"} Core (관찰·이유·결과 등
+                  핵심 내용)
+                </li>
+                <li>
+                  {result.structure.has_closing ? "✅" : "❌"} Closing (요약·다음
+                  단계 제시)
+                </li>
+              </ul>
+            </section>
+          )}
 
           {/* 코칭 리포트 */}
-          <section
-            style={{
-              padding: "16px",
-              borderRadius: "12px",
-              border: "1px solid #e5e7eb",
-              backgroundColor: "#f9fafb",
-            }}
-          >
-            <h2
+          {result.coach && (
+            <section
               style={{
-                fontSize: "18px",
-                fontWeight: 600,
-                marginBottom: "8px",
+                padding: "16px",
+                borderRadius: "12px",
+                border: "1px solid #e5e7eb",
+                backgroundColor: "#f9fafb",
               }}
             >
-              코칭 리포트 (Coaching report)
-            </h2>
-
-            <div style={{ marginBottom: "12px" }}>
-              <h3
+              <h2
                 style={{
-                  fontSize: "15px",
+                  fontSize: "18px",
                   fontWeight: 600,
-                  marginBottom: "4px",
+                  marginBottom: "8px",
                 }}
               >
-                강점 (Strengths)
-              </h3>
-              <ul style={{ paddingLeft: "18px", fontSize: "14px" }}>
-                {result.coach.strengths.map((s, idx) => (
-                  <li key={idx}>{s}</li>
-                ))}
-              </ul>
-            </div>
+                코칭 리포트 (Coaching report)
+              </h2>
 
-            <div style={{ marginBottom: "12px" }}>
-              <h3
+              {/* 강점 */}
+              <div style={{ marginBottom: "12px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "4px",
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    강점 (Strengths)
+                  </h3>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      fontSize: "12px",
+                      color: "#374151",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={recordFlags.includes("strengths")}
+                      onChange={() => toggleRecordFlag("strengths")}
+                    />
+                    <span>기록</span>
+                  </label>
+                </div>
+                <ul style={{ paddingLeft: "18px", fontSize: "14px" }}>
+                  {Array.isArray(result.coach.strengths) &&
+                    result.coach.strengths.map((s, idx) => (
+                      <li key={idx}>{s}</li>
+                    ))}
+                </ul>
+              </div>
+
+              {/* 개선 상위 3가지 */}
+              <div style={{ marginBottom: "12px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "4px",
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    개선이 필요한 상위 3가지 (Top 3 improvements)
+                  </h3>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      fontSize: "12px",
+                      color: "#374151",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={recordFlags.includes("improvements_top3")}
+                      onChange={() => toggleRecordFlag("improvements_top3")}
+                    />
+                    <span>기록</span>
+                  </label>
+                </div>
+                <ul style={{ paddingLeft: "18px", fontSize: "14px" }}>
+                  {Array.isArray(result.coach.improvements_top3) &&
+                    result.coach.improvements_top3.map((s, idx) => (
+                      <li key={idx}>{s}</li>
+                    ))}
+                </ul>
+              </div>
+
+              {/* Script next time */}
+              <div style={{ marginBottom: "8px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "4px",
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    다음에 이렇게 말해보세요 (Script next time)
+                  </h3>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      fontSize: "12px",
+                      color: "#374151",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={recordFlags.includes("script_next_time")}
+                      onChange={() => toggleRecordFlag("script_next_time")}
+                    />
+                    <span>기록</span>
+                  </label>
+                </div>
+                <p style={{ fontSize: "14px", whiteSpace: "pre-wrap" }}>
+                  {result.coach.script_next_time}
+                </p>
+              </div>
+
+              {/* 10초 미세 습관 */}
+              <div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "4px",
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    10초짜리 미세 습관 (10-second micro habit)
+                  </h3>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      fontSize: "12px",
+                      color: "#374151",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={recordFlags.includes("micro_habit_10sec")}
+                      onChange={() => toggleRecordFlag("micro_habit_10sec")}
+                    />
+                    <span>기록</span>
+                  </label>
+                </div>
+                <p style={{ fontSize: "14px", whiteSpace: "pre-wrap" }}>
+                  {result.coach.micro_habit_10sec}
+                </p>
+              </div>
+
+              {/* ✅ 전체 도움 정도 평가 + 기록 저장 */}
+              <div
                 style={{
-                  fontSize: "15px",
-                  fontWeight: 600,
-                  marginBottom: "4px",
+                  marginTop: "16px",
+                  paddingTop: "12px",
+                  borderTop: "1px solid #e5e7eb",
+                  fontSize: "13px",
                 }}
               >
-                개선이 필요한 상위 3가지 (Top 3 improvements)
-              </h3>
-              <ul style={{ paddingLeft: "18px", fontSize: "14px" }}>
-                {result.coach.improvements_top3.map((s, idx) => (
-                  <li key={idx}>{s}</li>
-                ))}
-              </ul>
-            </div>
+                <div style={{ marginBottom: "6px" }}>
+                  이 코칭 리포트는 전체적으로 얼마나 도움이 되었나요?
+                </div>
+                <div
+                  style={{ display: "flex", gap: "6px", marginBottom: "6px" }}
+                >
+                  {[1, 2, 3, 4, 5].map((score) => (
+                    <button
+                      key={score}
+                      type="button"
+                      onClick={() => handleCoachEval(score)}
+                      disabled={coachEvalSending || coachEvalDone}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "999px",
+                        border:
+                          coachEvalScore === score
+                            ? "1px solid #2563eb"
+                            : "1px solid #d1d5db",
+                        backgroundColor:
+                          coachEvalScore === score ? "#2563eb" : "#ffffff",
+                        color:
+                          coachEvalScore === score ? "#ffffff" : "#111827",
+                        cursor:
+                          coachEvalSending || coachEvalDone
+                            ? "default"
+                            : "pointer",
+                        fontSize: "13px",
+                      }}
+                    >
+                      {score}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                  1 = 전혀 도움이 되지 않았다, 5 = 매우 도움이 되었다
+                </div>
 
-            <div style={{ marginBottom: "8px" }}>
-              <h3
-                style={{
-                  fontSize: "15px",
-                  fontWeight: 600,
-                  marginBottom: "4px",
-                }}
-              >
-                다음에 이렇게 말해보세요 (Script next time)
-              </h3>
-              <p style={{ fontSize: "14px", whiteSpace: "pre-wrap" }}>
-                {result.coach.script_next_time}
-              </p>
-            </div>
+                {coachEvalSending && (
+                  <div
+                    style={{
+                      marginTop: "6px",
+                      fontSize: "12px",
+                      color: "#4b5563",
+                    }}
+                  >
+                    평가를 전송하는 중입니다...
+                  </div>
+                )}
+                {coachEvalDone && (
+                  <div
+                    style={{
+                      marginTop: "6px",
+                      fontSize: "12px",
+                      color: "#059669",
+                    }}
+                  >
+                    감사합니다! 코칭 리포트 품질을 개선하는 데 활용하겠습니다.
+                  </div>
+                )}
+                {coachEvalError && (
+                  <div
+                    style={{
+                      marginTop: "6px",
+                      fontSize: "12px",
+                      color: "#b91c1c",
+                    }}
+                  >
+                    {coachEvalError}
+                  </div>
+                )}
 
-            <div>
-              <h3
-                style={{
-                  fontSize: "15px",
-                  fontWeight: 600,
-                  marginBottom: "4px",
-                }}
-              >
-                10초짜리 미세 습관 (10-second micro habit)
-              </h3>
-              <p style={{ fontSize: "14px", whiteSpace: "pre-wrap" }}>
-                {result.coach.micro_habit_10sec}
-              </p>
-            </div>
-          </section>
+                {/* 기록 저장 버튼 */}
+                <div
+                  style={{
+                    marginTop: "12px",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "8px",
+                    alignItems: "center",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={handleSaveCoachMemo}
+                    disabled={coachMemoSending}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #10b981",
+                      backgroundColor: coachMemoSending
+                        ? "#a7f3d0"
+                        : "#10b981",
+                      color: "#ffffff",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      cursor: coachMemoSending ? "default" : "pointer",
+                    }}
+                  >
+                    코칭 리포트 기록 저장하기
+                  </button>
+                  <span style={{ fontSize: "12px", color: "#6b7280" }}>
+                    각 섹션 제목 옆의 {"'기록'"} 체크가 된 항목들이 저장됩니다.
+                  </span>
+                </div>
+
+                {coachMemoSending && (
+                  <div
+                    style={{
+                      marginTop: "6px",
+                      fontSize: "12px",
+                      color: "#4b5563",
+                    }}
+                  >
+                    기록을 저장하는 중입니다...
+                  </div>
+                )}
+                {coachMemoDone && (
+                  <div
+                    style={{
+                      marginTop: "6px",
+                      fontSize: "12px",
+                      color: "#059669",
+                    }}
+                  >
+                    기록이 저장되었습니다. (나중에 마이페이지/히스토리 화면에서
+                    열람 가능하게 확장할 수 있습니다.)
+                  </div>
+                )}
+                {coachMemoError && (
+                  <div
+                    style={{
+                      marginTop: "6px",
+                      fontSize: "12px",
+                      color: "#b91c1c",
+                    }}
+                  >
+                    {coachMemoError}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
           {/* 디버깅용 Raw JSON */}
           <section
