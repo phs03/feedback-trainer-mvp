@@ -1,0 +1,130 @@
+/* frontend/src/mobile.css */
+
+/* 기본 리셋 + 모바일 가독성 */
+:root {
+  --app-max-width: 860px;
+  --pad: 16px;
+  --radius: 12px;
+  --border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  line-height: 1.4;
+  background: #fff;
+  color: #111;
+}
+
+/* 화면 전체 레이아웃 */
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-container {
+  width: 100%;
+  max-width: var(--app-max-width);
+  margin: 0 auto;
+  padding: var(--pad);
+}
+
+/* 헤더 */
+.app-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.app-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.app-subtitle {
+  font-size: 13px;
+  opacity: 0.8;
+  margin: 0;
+}
+
+/* 카드/섹션 */
+.card {
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  background: #fff;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 입력 */
+textarea, input, select {
+  width: 100%;
+  font-size: 16px; /* iOS 자동 확대 방지 */
+}
+
+textarea {
+  min-height: 140px;
+  padding: 12px;
+  border: var(--border);
+  border-radius: var(--radius);
+  resize: vertical;
+}
+
+/* 버튼: 최소 터치 타겟 */
+button {
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: var(--border);
+  background: #f7f7f7;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 버튼 그룹 */
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* 모바일에서 하단 고정 액션바(옵션용) */
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border-top: var(--border);
+  padding: 10px var(--pad);
+}
+
+/* 결과/JSON: 가로 넘침 방지 */
+pre, code {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* 데스크톱에서 살짝 여유 */
+@media (min-width: 768px) {
+  .app-title { font-size: 24px; }
+  textarea { min-height: 200px; }
+}

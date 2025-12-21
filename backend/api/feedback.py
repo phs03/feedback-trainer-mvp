@@ -350,6 +350,8 @@ async def analyze_feedback(payload: FeedbackRequest) -> Dict[str, Any]:
                     numeric_scores.append(val)
             osad["total"] = sum(numeric_scores)
 
+
+
         # 항상 이 스케일의 만점은 config에 정의된 값으로 강제
         osad["scale"] = max_total
 

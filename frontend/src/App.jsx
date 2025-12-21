@@ -552,210 +552,89 @@ function App() {
       setCoachMemoSending(false);
     }
   }
-
+  
   return (
-    <div
-      style={{
-        maxWidth: "960px",
-        margin: "0 auto",
-        padding: "24px",
-        fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-      }}
-    >
-      <h1 style={{ fontSize: "24px", fontWeight: 700, marginBottom: "8px" }}>
-        지도전문의 피드백 분석 (MVP)
-      </h1>
-      <p style={{ marginBottom: "16px", color: "#555" }}>
-        실제 서비스에서는 음성 녹음을 STT로 변환한 텍스트가 이 입력창으로
-        들어올 예정입니다. 지금은 테스트를 위해 직접 피드백 문장을 입력하거나,
-        위에서 음성을 녹음해 보세요.
+  <div className="app-shell">
+    <div className="app-container">
+      <h1 className="h1">지도전문의 피드백 분석 (MVP)</h1>
+      <p className="p-muted">
+        실제 서비스에서는 음성 녹음을 STT로 변환한 텍스트가 이 입력창으로 들어올 예정입니다.
+        지금은 테스트를 위해 직접 피드백 문장을 입력하거나, 위에서 음성을 녹음해 보세요.
       </p>
 
       {/* 🔹 시나리오 / 스케일 선택 */}
-      <section
-        style={{
-          marginBottom: "16px",
-          padding: "12px 16px",
-          borderRadius: "12px",
-          border: "1px solid #e5e7eb",
-          backgroundColor: "#f3f4ff",
-          fontSize: "14px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            gap: "8px",
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
+      <section className="card purple">
+        <div className="row">
           <span style={{ fontWeight: 600 }}>피드백 상황 선택:</span>
-          <select
-            value={scenarioCode}
-            onChange={handleScenarioChange}
-            style={{
-              padding: "4px 8px",
-              borderRadius: "6px",
-              border: "1px solid #d1d5db",
-              fontSize: "14px",
-            }}
-          >
+          <select className="select" value={scenarioCode} onChange={handleScenarioChange}>
             {SCENARIO_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
             ))}
           </select>
-          <span style={{ color: "#6b7280", fontSize: "13px" }}>
+          <span className="muted" style={{ fontSize: 13 }}>
             (시뮬레이션 디브리핑 / 임상 진료 후 피드백 중 선택)
           </span>
         </div>
-        <div
-          style={{
-            marginTop: "4px",
-            fontSize: "12px",
-            color: "#6b7280",
-          }}
-        >
-          API에 전송되는 scale_code: <code>{scaleCode}</code>, scenario_code:{" "}
-          <code>{scenarioCode}</code>
+
+        <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+          API에 전송되는 scale_code: <code className="code">{scaleCode}</code>, scenario_code:{" "}
+          <code className="code">{scenarioCode}</code>
         </div>
       </section>
 
       {/* 🔹 1. 음성 녹음 영역 */}
-      <section
-        style={{
-          marginBottom: "16px",
-          padding: "16px",
-          borderRadius: "12px",
-          border: "1px solid #e5e7eb",
-          backgroundColor: "#f9fafb",
-        }}
-      >
-        <h2
-          style={{
-            fontSize: "18px",
-            fontWeight: 600,
-            marginBottom: "8px",
-          }}
-        >
-          1. 음성 녹음하기 (Record audio)
-        </h2>
-        <p style={{ fontSize: "14px", color: "#555", marginBottom: "8px" }}>
+      <section className="card">
+        <h2 className="h2">1. 음성 녹음하기 (Record audio)</h2>
+        <p className="small" style={{ marginBottom: 10 }}>
           지도전문의-전공의 피드백 장면을 이 브라우저에서 바로 녹음합니다.
-          (녹음 종료 후 재생 및 STT + 화자 구분으로 텍스트로 변환할 수
-          있습니다.)
+          (녹음 종료 후 재생 및 STT + 화자 구분으로 텍스트로 변환할 수 있습니다.)
         </p>
-        <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
-          <button
-            type="button"
-            onClick={handleStartRecording}
-            disabled={isRecording}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "none",
-              cursor: isRecording ? "default" : "pointer",
-              fontWeight: 600,
-            }}
-          >
+
+        <div className="row" style={{ marginBottom: 8 }}>
+          <button type="button" onClick={handleStartRecording} disabled={isRecording} className="btn ghost">
             🎙 녹음 시작 (Start recording)
           </button>
-          <button
-            type="button"
-            onClick={handleStopRecording}
-            disabled={!isRecording}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "none",
-              cursor: !isRecording ? "default" : "pointer",
-              fontWeight: 600,
-            }}
-          >
+          <button type="button" onClick={handleStopRecording} disabled={!isRecording} className="btn ghost">
             ⏹ 녹음 종료 (Stop)
           </button>
-          <button
-            type="button"
-            onClick={handlePlayRecording}
-            disabled={!audioUrl}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "none",
-              cursor: audioUrl ? "pointer" : "default",
-              fontWeight: 600,
-            }}
-          >
+          <button type="button" onClick={handlePlayRecording} disabled={!audioUrl} className="btn ghost">
             ▶ 녹음 재생 (Play)
           </button>
           <button
             type="button"
             onClick={handleTranscribeRecording}
             disabled={!audioChunksRef.current.length}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "none",
-              cursor: audioChunksRef.current.length ? "pointer" : "default",
-              fontWeight: 600,
-            }}
+            className="btn ghost"
           >
             ✨ 텍스트 변환 (Convert to text with speakers)
           </button>
         </div>
-        {recordingStatus && (
-          <p style={{ marginTop: "4px", fontSize: "14px", color: "#111" }}>
-            {recordingStatus}
-          </p>
-        )}
+
+        {recordingStatus && <p className="status">{recordingStatus}</p>}
 
         {/* 🔹 STT에서 감지한 언어 + OSAD 언어 선택 */}
-        <div
-          style={{
-            marginTop: "12px",
-            padding: "10px 12px",
-            borderRadius: "10px",
-            backgroundColor: "#eef2ff",
-            border: "1px solid #e5e7eb",
-            fontSize: "13px",
-          }}
-        >
+        <div className="card soft" style={{ marginTop: 12 }}>
           {detectedLanguage && (
-            <div style={{ marginBottom: "6px" }}>
+            <div style={{ marginBottom: 8, fontSize: 13 }}>
               <strong>자동 감지된 언어 (Detected language):</strong>{" "}
               {renderDetectedLanguage(detectedLanguage)}
             </div>
           )}
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "8px",
-              alignItems: "center",
-            }}
-          >
+
+          <div className="row" style={{ fontSize: 13 }}>
             <span>
               <strong>사용 언어 (Language for coaching):</strong>
             </span>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              style={{
-                padding: "4px 8px",
-                borderRadius: "6px",
-                border: "1px solid #d1d5db",
-                fontSize: "13px",
-              }}
-            >
+            <select className="select" value={language} onChange={(e) => setLanguage(e.target.value)}>
               {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
                 <option key={code} value={code}>
                   {label}
                 </option>
               ))}
             </select>
-            <span style={{ color: "#6b7280" }}>
+            <span className="muted">
               (자동: 지도전문의 발언 언어를 추론하여 사용, 불분명하면 한국어)
             </span>
           </div>
@@ -764,50 +643,20 @@ function App() {
 
       {/* 🔹 1-2. 화자별 transcript 미리보기 */}
       {segments && segments.length > 0 && (
-        <section
-          style={{
-            marginBottom: "16px",
-            padding: "16px",
-            borderRadius: "12px",
-            border: "1px solid #e5e7eb",
-            backgroundColor: "#f3f4f6",
-          }}
-        >
-          <h2
-            style={{
-              fontSize: "18px",
-              fontWeight: 600,
-              marginBottom: "8px",
-            }}
-          >
-            1-2. 화자별 transcript (Speaker diarization)
-          </h2>
+        <section className="card soft">
+          <h2 className="h2">1-2. 화자별 transcript (Speaker diarization)</h2>
 
           {/* 화자 역할 매핑 */}
           {uniqueSpeakers.length > 0 && (
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "12px",
-                marginBottom: "12px",
-                fontSize: "13px",
-              }}
-            >
+            <div className="row" style={{ marginBottom: 12, fontSize: 13, gap: 12 }}>
               {uniqueSpeakers.map((spk) => (
-                <div key={spk}>
-                  <span style={{ marginRight: "4px" }}>{spk} → </span>
+                <div key={spk} className="row" style={{ gap: 8 }}>
+                  <span>{spk} → </span>
                   <select
+                    className="select"
                     value={speakerMapping[spk] || spk}
-                    onChange={(e) =>
-                      handleSpeakerSelectChange(spk, e.target.value)
-                    }
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      border: "1px solid #d1d5db",
-                      fontSize: "13px",
-                    }}
+                    onChange={(e) => handleSpeakerSelectChange(spk, e.target.value)}
+                    style={{ fontSize: 13 }}
                   >
                     <option value={spk}>{spk}</option>
                     <option value="지도전문의">지도전문의 (Supervisor)</option>
@@ -820,66 +669,25 @@ function App() {
           )}
 
           {/* segment 리스트 */}
-          <div
-            style={{
-              display: "grid",
-              gap: "8px",
-              maxHeight: "260px",
-              overflowY: "auto",
-            }}
-          >
+          <div className="scroll">
             {indexedSegments.map((seg) => {
               const idx = seg._idx;
               const tags = getOsadTagsForSegment(idx);
               return (
-                <div
-                  key={idx}
-                  style={{
-                    padding: "8px",
-                    borderRadius: "8px",
-                    border: "1px solid #e5e7eb",
-                    backgroundColor: "#ffffff",
-                    fontSize: "13px",
-                  }}
-                >
-                  <div
-                    style={{
-                      marginBottom: "4px",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      color: "#4b5563",
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>
-                      {renderSpeakerLabel(seg.speaker)}
-                    </span>
+                <div key={idx} className="seg">
+                  <div className="seg-head">
+                    <span style={{ fontWeight: 600 }}>{renderSpeakerLabel(seg.speaker)}</span>
                     <span>
-                      {seg.start?.toFixed ? seg.start.toFixed(1) : seg.start} s{" "}
-                      ~ {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
+                      {seg.start?.toFixed ? seg.start.toFixed(1) : seg.start} s ~{" "}
+                      {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
                     </span>
                   </div>
-                  <div style={{ marginBottom: tags.length ? "4px" : 0 }}>
-                    {seg.text}
-                  </div>
+                  <div style={{ marginBottom: tags.length ? 6 : 0 }}>{seg.text}</div>
+
                   {tags.length > 0 && (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "4px",
-                        fontSize: "11px",
-                      }}
-                    >
+                    <div className="tags">
                       {tags.map((t) => (
-                        <span
-                          key={t}
-                          style={{
-                            padding: "2px 6px",
-                            borderRadius: "999px",
-                            backgroundColor: "#dbeafe",
-                            color: "#1d4ed8",
-                          }}
-                        >
+                        <span key={t} className="tag">
                           OSAD: {t}
                         </span>
                       ))}
@@ -894,125 +702,37 @@ function App() {
 
       {/* 🔹 1-3. 역할별 발언 분리 */}
       {segments && segments.length > 0 && (
-        <section
-          style={{
-            marginBottom: "24px",
-            padding: "16px",
-            borderRadius: "12px",
-            border: "1px solid #e5e7eb",
-            backgroundColor: "#ffffff",
-          }}
-        >
-          <h2
-            style={{
-              fontSize: "18px",
-              fontWeight: 600,
-              marginBottom: "8px",
-            }}
-          >
-            1-3. 역할별 발언 분리 (By role)
-          </h2>
-          <p style={{ fontSize: "13px", color: "#555", marginBottom: "8px" }}>
-            좌측에는 전공의 발언, 우측에는 지도전문의 발언만 시간 순서대로
-            모아서 보여줍니다. (Left: Resident, Right: Supervisor)
+        <section className="card white" style={{ marginBottom: 24 }}>
+          <h2 className="h2">1-3. 역할별 발언 분리 (By role)</h2>
+          <p className="small" style={{ marginBottom: 10 }}>
+            좌측에는 전공의 발언, 우측에는 지도전문의 발언만 시간 순서대로 모아서 보여줍니다.
+            (Left: Resident, Right: Supervisor)
           </p>
-          <div
-            style={{
-              display: "flex",
-              gap: "12px",
-              alignItems: "flex-start",
-            }}
-          >
+
+          <div className="two-col">
             {/* 전공의 발언 */}
-            <div
-              style={{
-                flex: 1,
-                borderRadius: "10px",
-                border: "1px solid #e5e7eb",
-                backgroundColor: "#f9fafb",
-                padding: "8px 10px",
-                minHeight: "80px",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  marginBottom: "6px",
-                  color: "#1f2933",
-                }}
-              >
-                전공의 발언 (Resident)
-              </div>
+            <div className="col">
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>전공의 발언 (Resident)</div>
               {traineeSegments.length === 0 ? (
-                <p
-                  style={{
-                    fontSize: "13px",
-                    color: "#9ca3af",
-                    fontStyle: "italic",
-                  }}
-                >
-                  전공의로 분류된 발언이 아직 없습니다. (No resident utterance
-                  yet)
+                <p className="muted" style={{ fontSize: 13, fontStyle: "italic" }}>
+                  전공의로 분류된 발언이 아직 없습니다. (No resident utterance yet)
                 </p>
               ) : (
-                <div
-                  style={{
-                    display: "grid",
-                    gap: "6px",
-                    maxHeight: "200px",
-                    overflowY: "auto",
-                    fontSize: "13px",
-                  }}
-                >
+                <div className="scroll" style={{ maxHeight: 200 }}>
                   {traineeSegments.map((seg) => {
                     const idx = seg._idx;
                     const tags = getOsadTagsForSegment(idx);
                     return (
-                      <div
-                        key={idx}
-                        style={{
-                          padding: "6px 8px",
-                          borderRadius: "8px",
-                          backgroundColor: "#ffffff",
-                          border: "1px solid #e5e7eb",
-                        }}
-                      >
-                        <div
-                          style={{
-                            marginBottom: "2px",
-                            fontSize: "12px",
-                            color: "#6b7280",
-                          }}
-                        >
-                          {seg.start?.toFixed
-                            ? seg.start.toFixed(1)
-                            : seg.start}{" "}
-                          s ~{" "}
+                      <div key={idx} className="seg">
+                        <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
+                          {seg.start?.toFixed ? seg.start.toFixed(1) : seg.start} s ~{" "}
                           {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
                         </div>
-                        <div style={{ marginBottom: tags.length ? "4px" : 0 }}>
-                          {seg.text}
-                        </div>
+                        <div style={{ marginBottom: tags.length ? 6 : 0 }}>{seg.text}</div>
                         {tags.length > 0 && (
-                          <div
-                            style={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: "4px",
-                              fontSize: "11px",
-                            }}
-                          >
+                          <div className="tags">
                             {tags.map((t) => (
-                              <span
-                                key={t}
-                                style={{
-                                  padding: "2px 6px",
-                                  borderRadius: "999px",
-                                  backgroundColor: "#dbeafe",
-                                  color: "#1d4ed8",
-                                }}
-                              >
+                              <span key={t} className="tag">
                                 OSAD: {t}
                               </span>
                             ))}
@@ -1026,95 +746,28 @@ function App() {
             </div>
 
             {/* 지도전문의 발언 */}
-            <div
-              style={{
-                flex: 1,
-                borderRadius: "10px",
-                border: "1px solid #e5e7eb",
-                backgroundColor: "#f9fafb",
-                padding: "8px 10px",
-                minHeight: "80px",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  marginBottom: "6px",
-                  color: "#1f2933",
-                }}
-              >
-                지도전문의 발언 (Supervisor)
-              </div>
+            <div className="col">
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>지도전문의 발언 (Supervisor)</div>
               {supervisorSegments.length === 0 ? (
-                <p
-                  style={{
-                    fontSize: "13px",
-                    color: "#9ca3af",
-                    fontStyle: "italic",
-                  }}
-                >
-                  지도전문의로 분류된 발언이 아직 없습니다. (No supervisor
-                  utterance yet)
+                <p className="muted" style={{ fontSize: 13, fontStyle: "italic" }}>
+                  지도전문의로 분류된 발언이 아직 없습니다. (No supervisor utterance yet)
                 </p>
               ) : (
-                <div
-                  style={{
-                    display: "grid",
-                    gap: "6px",
-                    maxHeight: "200px",
-                    overflowY: "auto",
-                    fontSize: "13px",
-                  }}
-                >
+                <div className="scroll" style={{ maxHeight: 200 }}>
                   {supervisorSegments.map((seg) => {
                     const idx = seg._idx;
                     const tags = getOsadTagsForSegment(idx);
                     return (
-                      <div
-                        key={idx}
-                        style={{
-                          padding: "6px 8px",
-                          borderRadius: "8px",
-                          backgroundColor: "#ffffff",
-                          border: "1px solid #e5e7eb",
-                        }}
-                      >
-                        <div
-                          style={{
-                            marginBottom: "2px",
-                            fontSize: "12px",
-                            color: "#6b7280",
-                          }}
-                        >
-                          {seg.start?.toFixed
-                            ? seg.start.toFixed(1)
-                            : seg.start}{" "}
-                          s ~{" "}
+                      <div key={idx} className="seg">
+                        <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
+                          {seg.start?.toFixed ? seg.start.toFixed(1) : seg.start} s ~{" "}
                           {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
                         </div>
-                        <div style={{ marginBottom: tags.length ? "4px" : 0 }}>
-                          {seg.text}
-                        </div>
+                        <div style={{ marginBottom: tags.length ? 6 : 0 }}>{seg.text}</div>
                         {tags.length > 0 && (
-                          <div
-                            style={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: "4px",
-                              fontSize: "11px",
-                            }}
-                          >
+                          <div className="tags">
                             {tags.map((t) => (
-                              <span
-                                key={t}
-                                style={{
-                                  padding: "2px 6px",
-                                  borderRadius: "999px",
-                                  backgroundColor: "#dbeafe",
-                                  color: "#1d4ed8",
-                                }}
-                              >
+                              <span key={t} className="tag">
                                 OSAD: {t}
                               </span>
                             ))}
@@ -1132,10 +785,7 @@ function App() {
 
       {/* 🔹 2. 텍스트 입력 + 분석 */}
       <form onSubmit={handleAnalyze}>
-        <label
-          htmlFor="transcript"
-          style={{ display: "block", fontWeight: 600, marginBottom: "8px" }}
-        >
+        <label htmlFor="transcript" className="label">
           2. 피드백 대화 transcript
         </label>
         <textarea
@@ -1143,126 +793,56 @@ function App() {
           value={transcript}
           onChange={(e) => setTranscript(e.target.value)}
           rows={8}
-          style={{
-            width: "100%",
-            padding: "12px",
-            fontSize: "14px",
-            lineHeight: 1.5,
-            borderRadius: "8px",
-            border: "1px solid " + (error ? "#f97373" : "#ccc"),
-            resize: "vertical",
-            boxSizing: "border-box",
-          }}
+          className={`textarea ${error ? "error" : ""}`}
         />
 
-        <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
+        <div className="row" style={{ marginTop: 12 }}>
           <button
             type="submit"
             disabled={loading || !transcript.trim()}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "8px",
-              border: "none",
-              cursor: loading ? "default" : "pointer",
-              fontWeight: 600,
-              backgroundColor: loading ? "#aaa" : "#2563eb",
-              color: "white",
-            }}
+            className={`btn primary full`}
           >
-            {loading
-              ? "분석 중... (Analyzing)"
-              : "피드백 분석하기 (Analyze feedback)"}
+            {loading ? "분석 중... (Analyzing)" : "피드백 분석하기 (Analyze feedback)"}
           </button>
         </div>
       </form>
 
-      {error && (
-        <div
-          style={{
-            marginTop: "16px",
-            padding: "12px",
-            borderRadius: "8px",
-            backgroundColor: "#fee2e2",
-            color: "#b91c1c",
-            whiteSpace: "pre-wrap",
-            fontSize: "14px",
-          }}
-        >
-          오류: {error}
-        </div>
-      )}
+      {error && <div className="err">오류: {error}</div>}
 
       {result && (
-        <div style={{ marginTop: "24px", display: "grid", gap: "16px" }}>
+        <div className="results">
           {/* 점수 요약 */}
-          <section
-            style={{
-              padding: "16px",
-              borderRadius: "12px",
-              border: "1px solid #e5e7eb",
-              backgroundColor: "#f9fafb",
-            }}
-          >
-            <h2
-              style={{
-                fontSize: "18px",
-                fontWeight: 600,
-                marginBottom: "8px",
-              }}
-            >
-              점수 요약 (Scores)
-            </h2>
+          <section className="card">
+            <h2 className="h2">점수 요약 (Scores)</h2>
 
-            <p style={{ marginBottom: "6px", fontSize: "14px", color: "#555" }}>
-              총점 (Total score):{" "}
-              <strong>{osadTotal !== null ? osadTotal : "-"}</strong>
+            <p className="small" style={{ marginBottom: 10 }}>
+              총점 (Total score): <strong>{osadTotal !== null ? osadTotal : "-"}</strong>
               점 / <strong>{osadScale}</strong>점{" "}
               {typeof osadPercent === "number" && (
                 <>
-                  {" "}
                   (<strong>{osadPercent}%</strong>)
                 </>
               )}
             </p>
 
             {typeof osadPercent === "number" && (
-              <div
-                style={{
-                  width: "100%",
-                  height: "12px",
-                  borderRadius: "999px",
-                  border: "1px solid #e5e7eb",
-                  overflow: "hidden",
-                  marginBottom: "12px",
-                  backgroundColor: "#f3f4f6",
-                }}
-              >
-                <div
-                  style={{
-                    width: osadPercentClamped + "%",
-                    height: "100%",
-                    backgroundColor: "#4caf50",
-                    transition: "width 0.3s ease",
-                  }}
-                />
+              <div className="progress" style={{ marginBottom: 12 }}>
+                <div style={{ width: osadPercentClamped + "%" }} />
               </div>
             )}
 
-            {/* 차원별 점수 (백엔드에서 오는 키 사용) */}
+            {/* 차원별 점수 */}
             {result.osad && (
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-                  gap: "4px 12px",
-                  fontSize: "13px",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                  gap: "6px 12px",
+                  fontSize: 13,
                 }}
               >
                 {Object.entries(result.osad)
-                  .filter(
-                    ([key]) =>
-                      !["total", "scale", "percent"].includes(key)
-                  )
+                  .filter(([key]) => !["total", "scale", "percent"].includes(key))
                   .map(([key, val]) => (
                     <div
                       key={key}
@@ -1270,115 +850,46 @@ function App() {
                         display: "flex",
                         justifyContent: "space-between",
                         borderBottom: "1px dashed #e5e7eb",
-                        paddingBottom: "2px",
+                        paddingBottom: 4,
+                        gap: 10,
                       }}
                     >
-                      <span>{key}</span>
-                      <span>{val}</span>
+                      <span style={{ color: "#374151" }}>{key}</span>
+                      <span style={{ fontWeight: 700 }}>{String(val)}</span>
                     </div>
                   ))}
               </div>
             )}
+
             {Object.keys(osadEvidence).length > 0 && (
-              <p
-                style={{
-                  marginTop: "8px",
-                  fontSize: "12px",
-                  color: "#4b5563",
-                }}
-              >
-                * 파란 OSAD 태그가 붙은 segment는 해당 차원의 근거로 사용된
-                발언입니다. (Blue OSAD tags = evidence)
+              <p className="muted" style={{ marginTop: 10, fontSize: 12 }}>
+                * 파란 OSAD 태그가 붙은 segment는 해당 차원의 근거로 사용된 발언입니다. (Blue OSAD tags = evidence)
               </p>
             )}
           </section>
 
           {/* 구조 분석 */}
           {result.structure && (
-            <section
-              style={{
-                padding: "16px",
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                backgroundColor: "#f9fafb",
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: "18px",
-                  fontWeight: 600,
-                  marginBottom: "8px",
-                }}
-              >
-                구조 분석 (Structure: Opening / Core / Closing)
-              </h2>
-              <ul
-                style={{ listStyle: "none", paddingLeft: 0, fontSize: "14px" }}
-              >
-                <li>
-                  {result.structure.has_opening ? "✅" : "❌"} Opening (전공의
-                  의견/생각을 묻는 시작)
-                </li>
-                <li>
-                  {result.structure.has_core ? "✅" : "❌"} Core (관찰·이유·결과 등
-                  핵심 내용)
-                </li>
-                <li>
-                  {result.structure.has_closing ? "✅" : "❌"} Closing (요약·다음
-                  단계 제시)
-                </li>
+            <section className="card">
+              <h2 className="h2">구조 분석 (Structure: Opening / Core / Closing)</h2>
+              <ul style={{ listStyle: "none", paddingLeft: 0, fontSize: 14, margin: 0 }}>
+                <li>{result.structure.has_opening ? "✅" : "❌"} Opening (전공의 의견/생각을 묻는 시작)</li>
+                <li>{result.structure.has_core ? "✅" : "❌"} Core (관찰·이유·결과 등 핵심 내용)</li>
+                <li>{result.structure.has_closing ? "✅" : "❌"} Closing (요약·다음 단계 제시)</li>
               </ul>
             </section>
           )}
 
           {/* 코칭 리포트 */}
           {result.coach && (
-            <section
-              style={{
-                padding: "16px",
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                backgroundColor: "#f9fafb",
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: "18px",
-                  fontWeight: 600,
-                  marginBottom: "8px",
-                }}
-              >
-                코칭 리포트 (Coaching report)
-              </h2>
+            <section className="card">
+              <h2 className="h2">코칭 리포트 (Coaching report)</h2>
 
               {/* 강점 */}
-              <div style={{ marginBottom: "12px" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "4px",
-                  }}
-                >
-                  <h3
-                    style={{
-                      fontSize: "15px",
-                      fontWeight: 600,
-                    }}
-                  >
-                    강점 (Strengths)
-                  </h3>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      fontSize: "12px",
-                      color: "#374151",
-                      cursor: "pointer",
-                    }}
-                  >
+              <div style={{ marginBottom: 14 }}>
+                <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
+                  <h3 className="h3">강점 (Strengths)</h3>
+                  <label className="row" style={{ gap: 6, fontSize: 12, color: "#374151" }}>
                     <input
                       type="checkbox"
                       checked={recordFlags.includes("strengths")}
@@ -1387,42 +898,17 @@ function App() {
                     <span>기록</span>
                   </label>
                 </div>
-                <ul style={{ paddingLeft: "18px", fontSize: "14px" }}>
+                <ul style={{ paddingLeft: 18, fontSize: 14, marginTop: 0 }}>
                   {Array.isArray(result.coach.strengths) &&
-                    result.coach.strengths.map((s, idx) => (
-                      <li key={idx}>{s}</li>
-                    ))}
+                    result.coach.strengths.map((s, idx) => <li key={idx}>{s}</li>)}
                 </ul>
               </div>
 
               {/* 개선 상위 3가지 */}
-              <div style={{ marginBottom: "12px" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "4px",
-                  }}
-                >
-                  <h3
-                    style={{
-                      fontSize: "15px",
-                      fontWeight: 600,
-                    }}
-                  >
-                    개선이 필요한 상위 3가지 (Top 3 improvements)
-                  </h3>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      fontSize: "12px",
-                      color: "#374151",
-                      cursor: "pointer",
-                    }}
-                  >
+              <div style={{ marginBottom: 14 }}>
+                <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
+                  <h3 className="h3">개선이 필요한 상위 3가지 (Top 3 improvements)</h3>
+                  <label className="row" style={{ gap: 6, fontSize: 12, color: "#374151" }}>
                     <input
                       type="checkbox"
                       checked={recordFlags.includes("improvements_top3")}
@@ -1431,42 +917,17 @@ function App() {
                     <span>기록</span>
                   </label>
                 </div>
-                <ul style={{ paddingLeft: "18px", fontSize: "14px" }}>
+                <ul style={{ paddingLeft: 18, fontSize: 14, marginTop: 0 }}>
                   {Array.isArray(result.coach.improvements_top3) &&
-                    result.coach.improvements_top3.map((s, idx) => (
-                      <li key={idx}>{s}</li>
-                    ))}
+                    result.coach.improvements_top3.map((s, idx) => <li key={idx}>{s}</li>)}
                 </ul>
               </div>
 
               {/* Script next time */}
-              <div style={{ marginBottom: "8px" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "4px",
-                  }}
-                >
-                  <h3
-                    style={{
-                      fontSize: "15px",
-                      fontWeight: 600,
-                    }}
-                  >
-                    다음에 이렇게 말해보세요 (Script next time)
-                  </h3>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      fontSize: "12px",
-                      color: "#374151",
-                      cursor: "pointer",
-                    }}
-                  >
+              <div style={{ marginBottom: 12 }}>
+                <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
+                  <h3 className="h3">다음에 이렇게 말해보세요 (Script next time)</h3>
+                  <label className="row" style={{ gap: 6, fontSize: 12, color: "#374151" }}>
                     <input
                       type="checkbox"
                       checked={recordFlags.includes("script_next_time")}
@@ -1475,39 +936,14 @@ function App() {
                     <span>기록</span>
                   </label>
                 </div>
-                <p style={{ fontSize: "14px", whiteSpace: "pre-wrap" }}>
-                  {result.coach.script_next_time}
-                </p>
+                <p style={{ fontSize: 14, whiteSpace: "pre-wrap", margin: 0 }}>{result.coach.script_next_time}</p>
               </div>
 
               {/* 10초 미세 습관 */}
-              <div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "4px",
-                  }}
-                >
-                  <h3
-                    style={{
-                      fontSize: "15px",
-                      fontWeight: 600,
-                    }}
-                  >
-                    10초짜리 미세 습관 (10-second micro habit)
-                  </h3>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      fontSize: "12px",
-                      color: "#374151",
-                      cursor: "pointer",
-                    }}
-                  >
+              <div style={{ marginBottom: 6 }}>
+                <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
+                  <h3 className="h3">10초짜리 미세 습관 (10-second micro habit)</h3>
+                  <label className="row" style={{ gap: 6, fontSize: 12, color: "#374151" }}>
                     <input
                       type="checkbox"
                       checked={recordFlags.includes("micro_habit_10sec")}
@@ -1516,195 +952,80 @@ function App() {
                     <span>기록</span>
                   </label>
                 </div>
-                <p style={{ fontSize: "14px", whiteSpace: "pre-wrap" }}>
-                  {result.coach.micro_habit_10sec}
-                </p>
+                <p style={{ fontSize: 14, whiteSpace: "pre-wrap", margin: 0 }}>{result.coach.micro_habit_10sec}</p>
               </div>
 
               {/* ✅ 전체 도움 정도 평가 + 기록 저장 */}
-              <div
-                style={{
-                  marginTop: "16px",
-                  paddingTop: "12px",
-                  borderTop: "1px solid #e5e7eb",
-                  fontSize: "13px",
-                }}
-              >
-                <div style={{ marginBottom: "6px" }}>
-                  이 코칭 리포트는 전체적으로 얼마나 도움이 되었나요?
+              <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid #e5e7eb", fontSize: 13 }}>
+                <div style={{ marginBottom: 8 }}>이 코칭 리포트는 전체적으로 얼마나 도움이 되었나요?</div>
+
+                <div className="row" style={{ gap: 6, marginBottom: 6 }}>
+                  {[1, 2, 3, 4, 5].map((score) => {
+                    const isSelected = coachEvalScore === score;
+                    return (
+                      <button
+                        key={score}
+                        type="button"
+                        onClick={() => handleCoachEval(score)}
+                        disabled={coachEvalSending || coachEvalDone}
+                        className="btn pill"
+                        style={{
+                          borderColor: isSelected ? "var(--brand)" : "#d1d5db",
+                          background: isSelected ? "var(--brand)" : "#fff",
+                          color: isSelected ? "#fff" : "#111827",
+                        }}
+                      >
+                        {score}
+                      </button>
+                    );
+                  })}
                 </div>
-                <div
-                  style={{ display: "flex", gap: "6px", marginBottom: "6px" }}
-                >
-                  {[1, 2, 3, 4, 5].map((score) => (
-                    <button
-                      key={score}
-                      type="button"
-                      onClick={() => handleCoachEval(score)}
-                      disabled={coachEvalSending || coachEvalDone}
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: "999px",
-                        border:
-                          coachEvalScore === score
-                            ? "1px solid #2563eb"
-                            : "1px solid #d1d5db",
-                        backgroundColor:
-                          coachEvalScore === score ? "#2563eb" : "#ffffff",
-                        color:
-                          coachEvalScore === score ? "#ffffff" : "#111827",
-                        cursor:
-                          coachEvalSending || coachEvalDone
-                            ? "default"
-                            : "pointer",
-                        fontSize: "13px",
-                      }}
-                    >
-                      {score}
-                    </button>
-                  ))}
-                </div>
-                <div style={{ fontSize: "12px", color: "#6b7280" }}>
+
+                <div className="muted" style={{ fontSize: 12 }}>
                   1 = 전혀 도움이 되지 않았다, 5 = 매우 도움이 되었다
                 </div>
 
-                {coachEvalSending && (
-                  <div
-                    style={{
-                      marginTop: "6px",
-                      fontSize: "12px",
-                      color: "#4b5563",
-                    }}
-                  >
-                    평가를 전송하는 중입니다...
-                  </div>
-                )}
-                {coachEvalDone && (
-                  <div
-                    style={{
-                      marginTop: "6px",
-                      fontSize: "12px",
-                      color: "#059669",
-                    }}
-                  >
-                    감사합니다! 코칭 리포트 품질을 개선하는 데 활용하겠습니다.
-                  </div>
-                )}
-                {coachEvalError && (
-                  <div
-                    style={{
-                      marginTop: "6px",
-                      fontSize: "12px",
-                      color: "#b91c1c",
-                    }}
-                  >
-                    {coachEvalError}
-                  </div>
-                )}
+                {coachEvalSending && <div className="muted" style={{ marginTop: 8, fontSize: 12 }}>평가를 전송하는 중입니다...</div>}
+                {coachEvalDone && <div style={{ marginTop: 8, fontSize: 12, color: "#059669" }}>감사합니다! 코칭 리포트 품질을 개선하는 데 활용하겠습니다.</div>}
+                {coachEvalError && <div style={{ marginTop: 8, fontSize: 12, color: "#b91c1c" }}>{coachEvalError}</div>}
 
-                {/* 기록 저장 버튼 */}
-                <div
-                  style={{
-                    marginTop: "12px",
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "8px",
-                    alignItems: "center",
-                  }}
-                >
+                <div className="row" style={{ marginTop: 12, gap: 8 }}>
                   <button
                     type="button"
                     onClick={handleSaveCoachMemo}
                     disabled={coachMemoSending}
+                    className="btn"
                     style={{
-                      padding: "6px 12px",
-                      borderRadius: "8px",
-                      border: "1px solid #10b981",
-                      backgroundColor: coachMemoSending
-                        ? "#a7f3d0"
-                        : "#10b981",
-                      color: "#ffffff",
-                      fontSize: "13px",
-                      fontWeight: 600,
-                      cursor: coachMemoSending ? "default" : "pointer",
+                      borderColor: "#10b981",
+                      background: coachMemoSending ? "#a7f3d0" : "#10b981",
+                      color: "#fff",
                     }}
                   >
                     코칭 리포트 기록 저장하기
                   </button>
-                  <span style={{ fontSize: "12px", color: "#6b7280" }}>
+                  <span className="muted" style={{ fontSize: 12 }}>
                     각 섹션 제목 옆의 {"'기록'"} 체크가 된 항목들이 저장됩니다.
                   </span>
                 </div>
 
-                {coachMemoSending && (
-                  <div
-                    style={{
-                      marginTop: "6px",
-                      fontSize: "12px",
-                      color: "#4b5563",
-                    }}
-                  >
-                    기록을 저장하는 중입니다...
-                  </div>
-                )}
-                {coachMemoDone && (
-                  <div
-                    style={{
-                      marginTop: "6px",
-                      fontSize: "12px",
-                      color: "#059669",
-                    }}
-                  >
-                    기록이 저장되었습니다. (나중에 마이페이지/히스토리 화면에서
-                    열람 가능하게 확장할 수 있습니다.)
-                  </div>
-                )}
-                {coachMemoError && (
-                  <div
-                    style={{
-                      marginTop: "6px",
-                      fontSize: "12px",
-                      color: "#b91c1c",
-                    }}
-                  >
-                    {coachMemoError}
-                  </div>
-                )}
+                {coachMemoSending && <div className="muted" style={{ marginTop: 8, fontSize: 12 }}>기록을 저장하는 중입니다...</div>}
+                {coachMemoDone && <div style={{ marginTop: 8, fontSize: 12, color: "#059669" }}>기록이 저장되었습니다. (나중에 마이페이지/히스토리 화면에서 열람 가능하게 확장할 수 있습니다.)</div>}
+                {coachMemoError && <div style={{ marginTop: 8, fontSize: 12, color: "#b91c1c" }}>{coachMemoError}</div>}
               </div>
             </section>
           )}
 
           {/* 디버깅용 Raw JSON */}
-          <section
-            style={{
-              padding: "16px",
-              borderRadius: "12px",
-              border: "1px solid #e5e7eb",
-              backgroundColor: "#111",
-              color: "#e5e7eb",
-              fontFamily:
-                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas",
-              fontSize: "12px",
-              overflowX: "auto",
-            }}
-          >
-            <h2
-              style={{
-                fontSize: "15px",
-                fontWeight: 600,
-                marginBottom: "8px",
-              }}
-            >
-              Raw JSON (디버깅용 / for debugging)
-            </h2>
-            <pre style={{ margin: 0 }}>
-              {JSON.stringify(result, null, 2)}
-            </pre>
+          <section className="mono-panel">
+            <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 8px" }}>Raw JSON (디버깅용 / for debugging)</h2>
+            <pre>{JSON.stringify(result, null, 2)}</pre>
           </section>
         </div>
       )}
     </div>
+  </div>
   );
+
 }
 
 export default App;
