@@ -419,6 +419,25 @@ function App() {
 const speakerAnalysis = result?.speaker_analysis || null;
 const aiSpeakerMapping = speakerAnalysis?.mapping || {};
 
+const speakerConfidence =
+  speakerAnalysis?.confidence !== undefined &&
+  speakerAnalysis?.confidence !== null &&
+  !Number.isNaN(Number(speakerAnalysis.confidence))
+    ? Number(speakerAnalysis.confidence)
+    : null;
+
+const speakerConfidenceLabel =
+  speakerAnalysis?.mode === "manual"
+    ? "사용자 직접 지정"
+    : speakerAnalysis?.confidence_label === "high"
+      ? "높음"
+      : speakerAnalysis?.confidence_label === "medium"
+        ? "보통"
+        : speakerAnalysis?.confidence_label === "low"
+          ? "낮음"
+          : "확인 불가";
+
+
   const osadEvidence = result?.evidence?.osad || {};
 
   // 🔹 점수/퍼센트 계산 (백엔드에서 준 scale 사용)
@@ -929,9 +948,49 @@ const aiSpeakerMapping = speakerAnalysis?.mapping || {};
 {/* 🔹 AI 화자 역할 추론 결과 */}
 {speakerAnalysis && (
   <section className="card soft">
-    <h2 className="h2">
-      화자 역할 분석 (Speaker role analysis)
-    </h2>
+<div
+  className="row"
+  style={{
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  }}
+>
+  <h2 className="h2" style={{ margin: 0 }}>
+    화자 역할 분석 (Speaker role analysis)
+  </h2>
+
+  <span
+    style={{
+      display: "inline-block",
+      padding: "5px 10px",
+      borderRadius: 999,
+      fontSize: 13,
+      fontWeight: 700,
+      background:
+        speakerAnalysis.mode === "manual"
+          ? "#ecfdf5"
+          : speakerAnalysis.confidence_label === "high"
+            ? "#ecfdf5"
+            : speakerAnalysis.confidence_label === "medium"
+              ? "#fffbeb"
+              : "#fff7ed",
+      color:
+        speakerAnalysis.mode === "manual"
+          ? "#047857"
+          : speakerAnalysis.confidence_label === "high"
+            ? "#047857"
+            : speakerAnalysis.confidence_label === "medium"
+              ? "#92400e"
+              : "#9a3412",
+    }}
+  >
+    신뢰도: {speakerConfidenceLabel}
+    {speakerAnalysis.mode !== "manual" &&
+      speakerConfidence !== null &&
+      ` (${Math.round(speakerConfidence * 100)}%)`}
+  </span>
+</div>
 
     <div
       style={{
@@ -979,29 +1038,13 @@ const aiSpeakerMapping = speakerAnalysis?.mapping || {};
         : "AI 자동 역할 추론"}
     </div>
 
-    <div style={{ marginTop: 6, fontSize: 13 }}>
-      <strong>추론 신뢰도:</strong>{" "}
-      {speakerAnalysis.confidence_label === "high"
-        ? "높음"
-        : speakerAnalysis.confidence_label === "medium"
-          ? "보통"
-          : "낮음"}
-
-      {typeof speakerAnalysis.confidence === "number" && (
-        <span className="muted">
-          {" "}
-          ({Math.round(
-            speakerAnalysis.confidence * 100
-          )}
-          %)
-        </span>
-      )}
-    </div>
-
     {speakerAnalysis.reason && (
       <p
         className="small"
-        style={{ marginTop: 8, marginBottom: 0 }}
+        style={{
+          marginTop: 8,
+          marginBottom: 0,
+        }}
       >
         {speakerAnalysis.reason}
       </p>
@@ -1022,9 +1065,10 @@ const aiSpeakerMapping = speakerAnalysis?.mapping || {};
         Advanced Mode에서 역할을 직접 지정한 후 다시
         분석하세요.
       </div>
-              )}
-            </section>
-          )}
+    )}
+  </section>
+)}
+
 
           {/* 점수 요약 */}
           <section className="card">

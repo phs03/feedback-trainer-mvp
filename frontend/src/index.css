@@ -1,11 +1,12 @@
+```css
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color-scheme: light;
+  color: #000000;
+  background-color: #ffffff;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -13,56 +14,205 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+html,
+body,
+#root {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100%;
+  background-color: #ffffff;
+  color: #000000;
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
   min-height: 100vh;
+  background-color: #ffffff;
+  color: #000000;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+a {
+  font-weight: 500;
+  color: #1d4ed8;
+  text-decoration: inherit;
+}
+
+a:hover {
+  color: #1e40af;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+span,
+div,
+label,
+li,
+strong {
+  color: #000000;
 }
 
 button {
   border-radius: 8px;
-  border: 1px solid transparent;
+  border: 1px solid #9ca3af;
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: #ffffff;
+  color: #000000;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  transition:
+    border-color 0.25s,
+    background-color 0.25s;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+button:hover {
+  border-color: #374151;
+  background-color: #f3f4f6;
 }
+
+button:focus,
+button:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  background-color: #ffffff;
+  color: #000000;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6b7280;
+}
+
+/* 전체 앱 영역 */
+.app-shell {
+  min-height: 100vh;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.app-container {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* 카드 */
+.card,
+.card.soft,
+.card.white,
+.card.purple {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d1d5db;
+  box-shadow: none;
+}
+
+/* 제목과 본문 */
+.h1,
+.h2,
+.h3,
+.label {
+  color: #000000 !important;
+}
+
+.p-muted,
+.muted,
+.small,
+.hint-text {
+  color: #374151 !important;
+}
+
+/* 입력창 */
+.textarea,
+.select {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #9ca3af;
+}
+
+/* transcript segment */
+.seg {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d1d5db;
+}
+
+.seg-head {
+  color: #000000 !important;
+}
+
+/* 역할별 컬럼 */
+.col {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* 태그 */
+.tag {
+  background-color: #f3f4f6 !important;
+  color: #000000 !important;
+  border: 1px solid #d1d5db;
+}
+
+/* 상태 메시지 */
+.status {
+  color: #000000 !important;
+}
+
+/* 오류 메시지 */
+.err {
+  background-color: #fff1f2;
+  color: #991b1b !important;
+  border: 1px solid #fecdd3;
+}
+
+/* Raw JSON */
+.mono-panel {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d1d5db;
+}
+
+.mono-panel pre {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* 코드 표시 */
+.code {
+  background-color: #f3f4f6 !important;
+  color: #000000 !important;
+  border: 1px solid #d1d5db;
+}
+
+/* 스크롤 영역 */
+.scroll {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* 진행 막대 바깥 영역 */
+.progress {
+  background-color: #e5e7eb;
+}
+
+/* 체크박스 */
+input[type="checkbox"] {
+  accent-color: #2563eb;
+}
+```
