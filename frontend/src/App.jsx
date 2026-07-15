@@ -42,6 +42,60 @@ const LANGUAGE_LABELS = {
   de: "독일어 (German)",
 };
 
+const OMP_LABELS = {
+  get_commitment: {
+    title: "1. 판단 유도",
+    description: "전공의가 자신의 진단이나 판단을 먼저 말하도록 유도함",
+  },
+
+  probe_for_supporting_evidence: {
+    title: "2. 근거 탐색",
+    description: "전공의 판단의 근거와 사고 과정을 질문함",
+  },
+
+  teach_general_rules: {
+    title: "3. 일반 원칙 교육",
+    description: "이번 사례에 적용할 수 있는 일반적인 임상 원칙을 설명함",
+  },
+
+  reinforce_what_was_done_right: {
+    title: "4. 잘한 점 강화",
+    description: "잘한 행동을 구체적으로 언급하고 강화함",
+  },
+
+  correct_mistakes: {
+    title: "5. 개선점 교정",
+    description: "개선할 행동을 구체적으로 제시함",
+  },
+
+  // 이전 키와의 호환성
+  commitment: {
+    title: "1. 판단 유도",
+    description: "전공의가 자신의 진단이나 판단을 먼저 말하도록 유도함",
+  },
+
+  evidence: {
+    title: "2. 근거 탐색",
+    description: "전공의 판단의 근거와 사고 과정을 질문함",
+  },
+
+  general_rules: {
+    title: "3. 일반 원칙 교육",
+    description: "이번 사례에 적용할 수 있는 일반적인 임상 원칙을 설명함",
+  },
+
+  reinforcement: {
+    title: "4. 잘한 점 강화",
+    description: "잘한 행동을 구체적으로 언급하고 강화함",
+  },
+
+  correction: {
+    title: "5. 개선점 교정",
+    description: "개선할 행동을 구체적으로 제시함",
+  },
+};
+
+
 function normalizeLangCode(code) {
   if (!code) return null;
   const base = code.split("-")[0].toLowerCase();
@@ -602,28 +656,6 @@ const speakerConfidenceLabel =
   다음 피드백에 활용할 수 있는 구체적인 코칭을 제공합니다.
 </p>
 
-      {/* 🔹 시나리오 / 스케일 선택 */}
-      <section className="card purple">
-        <div className="row">
-          <span style={{ fontWeight: 600 }}>피드백 상황 선택:</span>
-          <select className="select" value={scenarioCode} onChange={handleScenarioChange}>
-            {SCENARIO_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-<span className="muted" style={{ fontSize: 13 }}>
-  임상 현장의 짧은 지도전문의-전공의 피드백 분석
-</span>
-        </div>
-
-        <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-          API에 전송되는 scale_code: <code className="code">{scaleCode}</code>, scenario_code:{" "}
-          <code className="code">{scenarioCode}</code>
-        </div>
-      </section>
-
       {/* 🔹 1. 음성 녹음 영역 */}
       <section className="card">
         <h2 className="h2">1. 음성 녹음하기 (Record audio)</h2>
@@ -1088,35 +1120,107 @@ const speakerConfidenceLabel =
               </div>
             )}
 
-            {/* 차원별 점수 */}
-            {result.osad && (
+{/* OMP 5개 microskill 점수 */}
+{result.osad && (
+  <div
+    style={{
+      display: "grid",
+      gap: 12,
+    }}
+  >
+    {Object.entries(result.osad)
+      .filter(([key]) => !["total", "scale", "percent"].includes(key))
+      .map(([key, val]) => {
+        const score = Number(val);
+        const label = OMP_LABELS[key] || {
+          title: key,
+          description: "",
+        };
+
+        const scorePercent = Number.isFinite(score)
+          ? Math.min(100, Math.max(0, (score / 5) * 100))
+          : 0;
+
+        return (
+          <div
+            key={key}
+            style={{
+              padding: 12,
+              border: "1px solid #d1d5db",
+              borderRadius: 8,
+              background: "#ffffff",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 6,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontWeight: 700,
+                    fontSize: 14,
+                    color: "#000000",
+                  }}
+                >
+                  {label.title}
+                </div>
+
+                {label.description && (
+                  <div
+                    className="muted"
+                    style={{
+                      fontSize: 12,
+                      marginTop: 3,
+                    }}
+                  >
+                    {label.description}
+                  </div>
+                )}
+              </div>
+
               <div
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                  gap: "6px 12px",
-                  fontSize: 13,
+                  minWidth: 54,
+                  textAlign: "right",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: "#000000",
                 }}
               >
-                {Object.entries(result.osad)
-                  .filter(([key]) => !["total", "scale", "percent"].includes(key))
-                  .map(([key, val]) => (
-                    <div
-                      key={key}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        borderBottom: "1px dashed #e5e7eb",
-                        paddingBottom: 4,
-                        gap: 10,
-                      }}
-                    >
-                      <span style={{ color: "#374151" }}>{key}</span>
-                      <span style={{ fontWeight: 700 }}>{String(val)}</span>
-                    </div>
-                  ))}
+                {Number.isFinite(score) ? score : "-"} / 5
               </div>
-            )}
+            </div>
+
+            <div
+              style={{
+                width: "100%",
+                height: 10,
+                background: "#e5e7eb",
+                borderRadius: 999,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  width: `${scorePercent}%`,
+                  height: "100%",
+                  background: "#2563eb",
+                  borderRadius: 999,
+                  transition: "width 0.3s ease",
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+  </div>
+)}
 
             {Object.keys(osadEvidence).length > 0 && (
               <p className="muted" style={{ marginTop: 10, fontSize: 12 }}>
