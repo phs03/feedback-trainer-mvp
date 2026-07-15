@@ -42,7 +42,12 @@ def normalize_database_url(raw_url: str) -> str:
 
         # 이미 sslmode가 있으면 유지, 없으면 require로 보강
         if "sslmode" not in q:
-            q["sslmode"] = "require"
+            hostname = (p.hostname or "").lower()
+
+            if hostname in {"localhost", "127.0.0.1", "::1"}:
+                q["sslmode"] = "disable"
+            else:
+                q["sslmode"] = "require"
 
         new_query = urlencode(q, doseq=True)
         p2 = p._replace(query=new_query)
