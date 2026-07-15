@@ -25,11 +25,6 @@ console.log("[DEBUG] API_BASE =", API_BASE);
 // value: scenario_code, scaleCode: scale_code
 const SCENARIO_OPTIONS = [
   {
-    value: "EM_DEBRIEF",
-    label: "시뮬레이션 디브리핑 (OSAD)",
-    scaleCode: "OSAD_DEBRIEFER",
-  },
-  {
     value: "CLINICAL_OMP",
     label: "임상 진료 후 피드백 (One-Minute Preceptor)",
     scaleCode: "OMP_CORE_FIVE",
@@ -69,8 +64,8 @@ function App() {
   const [result, setResult] = useState(null);
 
   // 🔹 선택된 시나리오/스케일 상태
-  const [scenarioCode, setScenarioCode] = useState("EM_DEBRIEF");
-  const [scaleCode, setScaleCode] = useState("OSAD_DEBRIEFER");
+const [scenarioCode, setScenarioCode] = useState("CLINICAL_OMP");
+const [scaleCode, setScaleCode] = useState("OMP_CORE_FIVE");
 
   // 🔹 STT diarization 결과
   const [segments, setSegments] = useState([]);
@@ -475,7 +470,7 @@ const speakerConfidenceLabel =
         encounter_id: "UI-TEST-001",
         scenario_code: scenarioCode,
         scale_code: scaleCode,
-        model_version: "gpt-4o-mini-osad-v1",
+        model_version: "gpt-4o-mini-omp-v1",
         helpful_score: score,
         helpful_flags: recordFlags.length ? recordFlags : null,
         comment: null,
@@ -563,7 +558,7 @@ const speakerConfidenceLabel =
         trainee_id: "T-UI-001",
         scenario_code: scenarioCode,
         scale_code: scaleCode,
-        model_version: "gpt-4o-mini-osad-v1",
+        model_version: "gpt-4o-mini-omp-v1",
         saved_sections: selected,
         note: null,
       };
@@ -598,11 +593,14 @@ const speakerConfidenceLabel =
   return (
   <div className="app-shell">
     <div className="app-container">
-      <h1 className="h1">지도전문의 피드백 분석 (MVP)</h1>
-      <p className="p-muted">
-        실제 서비스에서는 음성 녹음을 STT로 변환한 텍스트가 이 입력창으로 들어올 예정입니다.
-        지금은 테스트를 위해 직접 피드백 문장을 입력하거나, 위에서 음성을 녹음해 보세요.
-      </p>
+<h1 className="h1">
+  One-Minute Preceptor 피드백 코칭
+</h1>
+<p className="p-muted">
+  지도전문의와 전공의의 짧은 임상 피드백 대화를 분석하여
+  One-Minute Preceptor의 5개 microskill을 평가하고,
+  다음 피드백에 활용할 수 있는 구체적인 코칭을 제공합니다.
+</p>
 
       {/* 🔹 시나리오 / 스케일 선택 */}
       <section className="card purple">
@@ -615,9 +613,9 @@ const speakerConfidenceLabel =
               </option>
             ))}
           </select>
-          <span className="muted" style={{ fontSize: 13 }}>
-            (시뮬레이션 디브리핑 / 임상 진료 후 피드백 중 선택)
-          </span>
+<span className="muted" style={{ fontSize: 13 }}>
+  임상 현장의 짧은 지도전문의-전공의 피드백 분석
+</span>
         </div>
 
         <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
@@ -656,7 +654,7 @@ const speakerConfidenceLabel =
 
         {recordingStatus && <p className="status">{recordingStatus}</p>}
 
-        {/* 🔹 STT에서 감지한 언어 + OSAD 언어 선택 */}
+        {/* 🔹 STT에서 감지한 언어 + 코칭 언어 선택 */}
         <div className="card soft" style={{ marginTop: 12 }}>
           {detectedLanguage && (
             <div style={{ marginBottom: 8, fontSize: 13 }}>
@@ -766,7 +764,7 @@ const speakerConfidenceLabel =
                     <div className="tags">
                       {tags.map((t) => (
                         <span key={t} className="tag">
-                          OSAD: {t}
+                          OMP: {t}
                         </span>
                       ))}
                     </div>
@@ -839,7 +837,7 @@ const speakerConfidenceLabel =
                           <div className="tags">
                             {tags.map((t) => (
                               <span key={t} className="tag">
-                                OSAD: {t}
+                                OMP: {t}
                               </span>
                             ))}
                           </div>
@@ -901,7 +899,7 @@ const speakerConfidenceLabel =
                           <div className="tags">
                             {tags.map((t) => (
                               <span key={t} className="tag">
-                                OSAD: {t}
+                                OMP: {t}
                               </span>
                             ))}
                           </div>
@@ -1122,8 +1120,7 @@ const speakerConfidenceLabel =
 
             {Object.keys(osadEvidence).length > 0 && (
               <p className="muted" style={{ marginTop: 10, fontSize: 12 }}>
-                * 파란 OSAD 태그가 붙은 segment는 해당 차원의 근거로 사용된 발언입니다. (Blue OSAD tags = evidence)
-              </p>
+* OMP 태그가 붙은 발언은 해당 microskill 평가의 근거로 사용되었습니다.              </p>
             )}
           </section>
 
