@@ -354,10 +354,27 @@ function App() {
 
   // 🔹 Speaker label을 사람 역할로 보여주기
   function renderSpeakerLabel(speaker) {
-    const role = speakerMapping[speaker] || speaker;
-    if (role === "지도전문의") return "지도전문의 (Supervisor)";
-    if (role === "전공의") return "전공의 (Resident)";
-    return role;
+  // Advanced Mode에서는 사용자가 직접 지정한 역할 사용
+  // 기본 모드에서는 AI가 추론한 역할 사용
+    const activeMapping = advancedMode
+      ? speakerMapping
+      : aiSpeakerMapping;
+
+    const role = activeMapping[speaker] || speaker;
+
+    if (role === "지도전문의") {
+      return `지도전문의 (Supervisor) · ${speaker}`;
+    }
+
+    if (role === "전공의") {
+      return `전공의 (Resident) · ${speaker}`;
+    }
+
+    if (role === "기타") {
+      return `기타 (Other) · ${speaker}`;
+    }
+
+    return speaker;
   }
 
   function handleSpeakerSelectChange(speakerKey, value) {
@@ -398,6 +415,9 @@ function App() {
     }
     return tags;
   }
+
+const speakerAnalysis = result?.speaker_analysis || null;
+const aiSpeakerMapping = speakerAnalysis?.mapping || {};
 
   const osadEvidence = result?.evidence?.osad || {};
 
@@ -708,9 +728,7 @@ function App() {
                 <div key={idx} className="seg">
                   <div className="seg-head">
                     <span style={{ fontWeight: 600 }}>
-                      {advancedMode
-                        ? renderSpeakerLabel(seg.speaker)
-                        : seg.speaker}
+                        {renderSpeakerLabel(seg.speaker)}
                     </span>
                     <span>
                       {seg.start?.toFixed
@@ -907,6 +925,107 @@ function App() {
 
       {result && (
         <div className="results">
+
+{/* 🔹 AI 화자 역할 추론 결과 */}
+{speakerAnalysis && (
+  <section className="card soft">
+    <h2 className="h2">
+      화자 역할 분석 (Speaker role analysis)
+    </h2>
+
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns:
+          "repeat(auto-fit, minmax(220px, 1fr))",
+        gap: 10,
+        marginBottom: 12,
+      }}
+    >
+      {Object.entries(aiSpeakerMapping).map(
+        ([speaker, role]) => (
+          <div
+            key={speaker}
+            style={{
+              padding: 10,
+              border: "1px solid #e5e7eb",
+              borderRadius: 8,
+              background: "#ffffff",
+            }}
+          >
+            <div
+              className="muted"
+              style={{ fontSize: 12, marginBottom: 4 }}
+            >
+              {speaker}
+            </div>
+
+            <div style={{ fontWeight: 700 }}>
+              {role === "지도전문의"
+                ? "지도전문의 (Supervisor)"
+                : role === "전공의"
+                  ? "전공의 (Resident)"
+                  : "기타 (Other)"}
+            </div>
+          </div>
+        )
+      )}
+    </div>
+
+    <div style={{ fontSize: 13 }}>
+      <strong>분석 방식:</strong>{" "}
+      {speakerAnalysis.mode === "manual"
+        ? "Advanced Mode에서 사용자가 직접 지정"
+        : "AI 자동 역할 추론"}
+    </div>
+
+    <div style={{ marginTop: 6, fontSize: 13 }}>
+      <strong>추론 신뢰도:</strong>{" "}
+      {speakerAnalysis.confidence_label === "high"
+        ? "높음"
+        : speakerAnalysis.confidence_label === "medium"
+          ? "보통"
+          : "낮음"}
+
+      {typeof speakerAnalysis.confidence === "number" && (
+        <span className="muted">
+          {" "}
+          ({Math.round(
+            speakerAnalysis.confidence * 100
+          )}
+          %)
+        </span>
+      )}
+    </div>
+
+    {speakerAnalysis.reason && (
+      <p
+        className="small"
+        style={{ marginTop: 8, marginBottom: 0 }}
+      >
+        {speakerAnalysis.reason}
+      </p>
+    )}
+
+    {speakerAnalysis.uncertain && (
+      <div
+        style={{
+          marginTop: 10,
+          padding: 10,
+          borderRadius: 8,
+          background: "#fff7ed",
+          color: "#9a3412",
+          fontSize: 13,
+        }}
+      >
+        ⚠ 화자 역할 추론이 불확실합니다. 필요한 경우
+        Advanced Mode에서 역할을 직접 지정한 후 다시
+        분석하세요.
+      </div>
+              )}
+            </section>
+          )}
+
           {/* 점수 요약 */}
           <section className="card">
             <h2 className="h2">점수 요약 (Scores)</h2>
