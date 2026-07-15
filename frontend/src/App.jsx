@@ -79,6 +79,8 @@ function App() {
     SPEAKER_01: "전공의",
   });
 
+  const [advancedMode, setAdvancedMode] = useState(false);
+
   // 🔹 언어 상태
   const [detectedLanguage, setDetectedLanguage] = useState(null);
   const [language, setLanguage] = useState("auto");
@@ -155,7 +157,8 @@ function App() {
           note: "ui test",
         },
         segments: segments,
-        speaker_mapping: speakerMapping,
+        speaker_mode: advancedMode ? "manual" : "auto",
+        speaker_mapping: advancedMode ? speakerMapping : {},
       };
 
       const url = `${API_BASE}/feedback`;
@@ -641,25 +644,52 @@ function App() {
         </div>
       </section>
 
+      {/* 🔹 Advanced Mode 설정: 녹음/STT 전에도 항상 표시 */}
+      <section className="card soft">
+        <div className="advanced-mode-box">
+          <label className="row" style={{ gap: 8, fontWeight: 600 }}>
+            <input
+              type="checkbox"
+              checked={advancedMode}
+              onChange={(e) => setAdvancedMode(e.target.checked)}
+            />
+            <span>Advanced Mode: 화자 역할 직접 지정</span>
+          </label>
+
+          <p className="hint-text" style={{ marginTop: 8, marginBottom: 0 }}>
+            {advancedMode
+              ? "고급 모드에서는 각 화자의 역할을 직접 지정합니다."
+              : "기본 모드에서는 AI가 지도전문의와 전공의 역할을 자동으로 추론합니다."}
+          </p>
+        </div>
+      </section>
+
       {/* 🔹 1-2. 화자별 transcript 미리보기 */}
       {segments && segments.length > 0 && (
         <section className="card soft">
           <h2 className="h2">1-2. 화자별 transcript (Speaker diarization)</h2>
 
-          {/* 화자 역할 매핑 */}
-          {uniqueSpeakers.length > 0 && (
-            <div className="row" style={{ marginBottom: 12, fontSize: 13, gap: 12 }}>
+          {/* 화자 역할 매핑: Advanced Mode에서만 표시 */}
+          {advancedMode && uniqueSpeakers.length > 0 && (
+            <div
+              className="row"
+              style={{ marginBottom: 12, fontSize: 13, gap: 12 }}
+            >
               {uniqueSpeakers.map((spk) => (
                 <div key={spk} className="row" style={{ gap: 8 }}>
                   <span>{spk} → </span>
                   <select
                     className="select"
                     value={speakerMapping[spk] || spk}
-                    onChange={(e) => handleSpeakerSelectChange(spk, e.target.value)}
+                    onChange={(e) =>
+                      handleSpeakerSelectChange(spk, e.target.value)
+                    }
                     style={{ fontSize: 13 }}
                   >
                     <option value={spk}>{spk}</option>
-                    <option value="지도전문의">지도전문의 (Supervisor)</option>
+                    <option value="지도전문의">
+                      지도전문의 (Supervisor)
+                    </option>
                     <option value="전공의">전공의 (Resident)</option>
                     <option value="기타">기타 (Other)</option>
                   </select>
@@ -673,16 +703,27 @@ function App() {
             {indexedSegments.map((seg) => {
               const idx = seg._idx;
               const tags = getOsadTagsForSegment(idx);
+
               return (
                 <div key={idx} className="seg">
                   <div className="seg-head">
-                    <span style={{ fontWeight: 600 }}>{renderSpeakerLabel(seg.speaker)}</span>
+                    <span style={{ fontWeight: 600 }}>
+                      {advancedMode
+                        ? renderSpeakerLabel(seg.speaker)
+                        : seg.speaker}
+                    </span>
                     <span>
-                      {seg.start?.toFixed ? seg.start.toFixed(1) : seg.start} s ~{" "}
+                      {seg.start?.toFixed
+                        ? seg.start.toFixed(1)
+                        : seg.start}{" "}
+                      s ~{" "}
                       {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
                     </span>
                   </div>
-                  <div style={{ marginBottom: tags.length ? 6 : 0 }}>{seg.text}</div>
+
+                  <div style={{ marginBottom: tags.length ? 6 : 0 }}>
+                    {seg.text}
+                  </div>
 
                   {tags.length > 0 && (
                     <div className="tags">
@@ -700,35 +741,63 @@ function App() {
         </section>
       )}
 
-      {/* 🔹 1-3. 역할별 발언 분리 */}
-      {segments && segments.length > 0 && (
+      {/* 🔹 1-3. 역할별 발언 분리: Advanced Mode에서만 표시 */}
+      {advancedMode && segments && segments.length > 0 && (
         <section className="card white" style={{ marginBottom: 24 }}>
           <h2 className="h2">1-3. 역할별 발언 분리 (By role)</h2>
           <p className="small" style={{ marginBottom: 10 }}>
-            좌측에는 전공의 발언, 우측에는 지도전문의 발언만 시간 순서대로 모아서 보여줍니다.
-            (Left: Resident, Right: Supervisor)
+            좌측에는 전공의 발언, 우측에는 지도전문의 발언만 시간
+            순서대로 모아서 보여줍니다. (Left: Resident, Right:
+            Supervisor)
           </p>
 
           <div className="two-col">
             {/* 전공의 발언 */}
             <div className="col">
-              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>전공의 발언 (Resident)</div>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  marginBottom: 8,
+                }}
+              >
+                전공의 발언 (Resident)
+              </div>
+
               {traineeSegments.length === 0 ? (
-                <p className="muted" style={{ fontSize: 13, fontStyle: "italic" }}>
-                  전공의로 분류된 발언이 아직 없습니다. (No resident utterance yet)
+                <p
+                  className="muted"
+                  style={{ fontSize: 13, fontStyle: "italic" }}
+                >
+                  전공의로 분류된 발언이 아직 없습니다. (No resident
+                  utterance yet)
                 </p>
               ) : (
                 <div className="scroll" style={{ maxHeight: 200 }}>
                   {traineeSegments.map((seg) => {
                     const idx = seg._idx;
                     const tags = getOsadTagsForSegment(idx);
+
                     return (
                       <div key={idx} className="seg">
-                        <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
-                          {seg.start?.toFixed ? seg.start.toFixed(1) : seg.start} s ~{" "}
-                          {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
+                        <div
+                          className="muted"
+                          style={{ fontSize: 12, marginBottom: 4 }}
+                        >
+                          {seg.start?.toFixed
+                            ? seg.start.toFixed(1)
+                            : seg.start}{" "}
+                          s ~{" "}
+                          {seg.end?.toFixed
+                            ? seg.end.toFixed(1)
+                            : seg.end}{" "}
+                          s
                         </div>
-                        <div style={{ marginBottom: tags.length ? 6 : 0 }}>{seg.text}</div>
+
+                        <div style={{ marginBottom: tags.length ? 6 : 0 }}>
+                          {seg.text}
+                        </div>
+
                         {tags.length > 0 && (
                           <div className="tags">
                             {tags.map((t) => (
@@ -747,23 +816,50 @@ function App() {
 
             {/* 지도전문의 발언 */}
             <div className="col">
-              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>지도전문의 발언 (Supervisor)</div>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  marginBottom: 8,
+                }}
+              >
+                지도전문의 발언 (Supervisor)
+              </div>
+
               {supervisorSegments.length === 0 ? (
-                <p className="muted" style={{ fontSize: 13, fontStyle: "italic" }}>
-                  지도전문의로 분류된 발언이 아직 없습니다. (No supervisor utterance yet)
+                <p
+                  className="muted"
+                  style={{ fontSize: 13, fontStyle: "italic" }}
+                >
+                  지도전문의로 분류된 발언이 아직 없습니다. (No
+                  supervisor utterance yet)
                 </p>
               ) : (
                 <div className="scroll" style={{ maxHeight: 200 }}>
                   {supervisorSegments.map((seg) => {
                     const idx = seg._idx;
                     const tags = getOsadTagsForSegment(idx);
+
                     return (
                       <div key={idx} className="seg">
-                        <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
-                          {seg.start?.toFixed ? seg.start.toFixed(1) : seg.start} s ~{" "}
-                          {seg.end?.toFixed ? seg.end.toFixed(1) : seg.end} s
+                        <div
+                          className="muted"
+                          style={{ fontSize: 12, marginBottom: 4 }}
+                        >
+                          {seg.start?.toFixed
+                            ? seg.start.toFixed(1)
+                            : seg.start}{" "}
+                          s ~{" "}
+                          {seg.end?.toFixed
+                            ? seg.end.toFixed(1)
+                            : seg.end}{" "}
+                          s
                         </div>
-                        <div style={{ marginBottom: tags.length ? 6 : 0 }}>{seg.text}</div>
+
+                        <div style={{ marginBottom: tags.length ? 6 : 0 }}>
+                          {seg.text}
+                        </div>
+
                         {tags.length > 0 && (
                           <div className="tags">
                             {tags.map((t) => (
