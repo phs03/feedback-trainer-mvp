@@ -1,6 +1,7 @@
 # backend/api/feedback.py
 
 import json
+import uuid
 from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,7 +13,11 @@ from backend.api.stt import client as openai_client
 
 # DB 관련
 from backend.db import get_db
-from backend.models.feedback_models import CoachEval, CoachMemo
+from backend.models.feedback_models import (
+    FeedbackSession,
+    CoachEval,
+    CoachMemo,
+)
 
 
 # ---------- 스케일 설정 (OSAD + OMP 호환) ----------
@@ -455,7 +460,10 @@ def normalize_evidence(
 # ---------- 피드백 분석 ----------
 
 @router.post("/feedback")
-async def analyze_feedback(payload: FeedbackRequest) -> Dict[str, Any]:
+async def analyze_feedback(
+    payload: FeedbackRequest,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
     """
     기본 모드에서는 AI가 익명 화자의 역할을 추론한 뒤 지도전문의의
     OMP 교수행동을 평가한다.
@@ -801,15 +809,161 @@ async def analyze_feedback(payload: FeedbackRequest) -> Dict[str, Any]:
                 "micro_habit_10sec": "",
             }
 
-        # 프런트엔드 디버깅 및 향후 저장용 메타데이터
+        # ---------- 연구용 세션 메타데이터 ----------
+
+        model_version = "gpt-4o-mini-omp-v1"
+        prompt_version = "omp-feedback-prompt-v1"
+
+        encounter_id = (
+            str(payload.encounter_id).strip()
+            if payload.encounter_id
+            else f"OMP-{uuid.uuid4().hex}"
+        )
+
         data["meta"] = {
+            "encounter_id": encounter_id,
             "speaker_mode": speaker_mode,
             "requested_scale_code": requested_scale_code,
             "effective_scale_code": effective_scale_code,
             "scenario_code": payload.scenario_code,
             "observed_speakers": observed_speakers,
-            "model_version": "gpt-4o-mini-omp-v1",
+            "model_version": model_version,
+            "prompt_version": prompt_version,
         }
+
+        # ---------- FeedbackSession 저장 ----------
+
+        scores = data.get("osad") or {}
+        speaker_analysis = data.get("speaker_analysis") or {}
+
+        segments_data = [
+            (
+                segment.model_dump()
+                if hasattr(segment, "model_dump")
+                else segment.dict()
+            )
+            for segment in (payload.segments or [])
+        ]
+
+        context_data = None
+        if payload.context is not None:
+            context_data = (
+                payload.context.model_dump()
+                if hasattr(payload.context, "model_dump")
+                else payload.context.dict()
+            )
+
+        session_values = {
+            "supervisor_id": payload.supervisor_id,
+            "trainee_id": payload.trainee_id,
+            "scenario_code": (
+                payload.scenario_code or "CLINICAL_OMP"
+            ),
+            "scale_code": requested_scale_code,
+            "trainee_level": payload.trainee_level,
+            "language": payload.language,
+            "audio_ref": payload.audio_ref,
+            "transcript": transcript,
+            "segments_json": json.dumps(
+                segments_data,
+                ensure_ascii=False,
+            ),
+            "context_json": (
+                json.dumps(context_data, ensure_ascii=False)
+                if context_data is not None
+                else None
+            ),
+            "speaker_mode": speaker_mode,
+            "speaker_mapping_json": json.dumps(
+                speaker_analysis.get("mapping") or {},
+                ensure_ascii=False,
+            ),
+            "speaker_confidence": speaker_analysis.get(
+                "confidence"
+            ),
+            "speaker_confidence_label": speaker_analysis.get(
+                "confidence_label"
+            ),
+            "speaker_uncertain": bool(
+                speaker_analysis.get("uncertain", False)
+            ),
+            "speaker_reason": speaker_analysis.get("reason"),
+            "get_commitment": scores.get("get_commitment"),
+            "probe_for_supporting_evidence": scores.get(
+                "probe_for_evidence"
+            ),
+            "teach_general_rules": scores.get(
+                "teach_general_rules"
+            ),
+            "reinforce_what_was_done_right": scores.get(
+                "reinforce_what_was_done_right"
+            ),
+            "correct_mistakes": scores.get("correct_mistakes"),
+            "omp_total": scores.get("total"),
+            "omp_scale": scores.get("scale"),
+            "omp_percent": scores.get("percent"),
+            "evidence_json": json.dumps(
+                data.get("evidence") or {},
+                ensure_ascii=False,
+            ),
+            "structure_json": json.dumps(
+                data.get("structure") or {},
+                ensure_ascii=False,
+            ),
+            "coach_json": json.dumps(
+                data.get("coach") or {},
+                ensure_ascii=False,
+            ),
+            "full_result_json": json.dumps(
+                data,
+                ensure_ascii=False,
+            ),
+            "model_version": model_version,
+            "prompt_version": prompt_version,
+        }
+
+        try:
+            session_obj = (
+                db.query(FeedbackSession)
+                .filter(
+                    FeedbackSession.encounter_id == encounter_id
+                )
+                .one_or_none()
+            )
+
+            if session_obj is None:
+                session_obj = FeedbackSession(
+                    encounter_id=encounter_id,
+                    **session_values,
+                )
+                db.add(session_obj)
+            else:
+                for field_name, field_value in session_values.items():
+                    setattr(
+                        session_obj,
+                        field_name,
+                        field_value,
+                    )
+
+            db.commit()
+            db.refresh(session_obj)
+
+            data["meta"]["saved_to_db"] = True
+            data["meta"]["feedback_session_id"] = session_obj.id
+
+        except Exception as db_exc:
+            db.rollback()
+            print(
+                "=== DEBUG: FeedbackSession save ERROR ===",
+                repr(db_exc),
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Feedback analysis succeeded, but research "
+                    f"session save failed: {db_exc}"
+                ),
+            ) from db_exc
 
         return data
 
