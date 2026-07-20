@@ -99,6 +99,26 @@ function renderDetectedLanguage(code) {
   return `${label} (${code})`;
 }
 
+function createEncounterId() {
+  const now = new Date();
+
+  const timestamp = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+    String(now.getHours()).padStart(2, "0"),
+    String(now.getMinutes()).padStart(2, "0"),
+    String(now.getSeconds()).padStart(2, "0"),
+  ].join("");
+
+  const randomPart =
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID().replace(/-/g, "").slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+
+  return `OMP-${timestamp}-${randomPart}`;
+}
+
 function App() {
   const [transcript, setTranscript] = useState(
     "먼저 너 생각은 어땠어? 나는 네가 ABC를 설명한 건 좋았다고 생각해. 아까 환자에게 문제를 설명했을 때, 네가 쉬운 말로 바꿔서 말한 점이 특히 좋았어. 정리하면 중요한 건 감별진단의 우선순위를 환자에게도 이해할 수 있게 설명하는 거야. 다음에는 처음 5분 안에 네 가설을 한 번 말해보고, 그걸 환자에게도 공유해보자."
@@ -106,6 +126,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const [encounterId, setEncounterId] = useState("");
 
   // 🔹 선택된 시나리오/스케일 상태
   const [scenarioCode] = useState("CLINICAL_OMP");
@@ -169,9 +190,12 @@ function App() {
     setCoachMemoDone(false);
     setCoachMemoError("");
 
+    const analysisEncounterId = createEncounterId();
+    setEncounterId(analysisEncounterId);
+
     try {
       const payload = {
-        encounter_id: "UI-TEST-001", // TODO: 나중에 실제 encounter_id로 변경
+        encounter_id: analysisEncounterId,
         supervisor_id: "S-UI-001",
         trainee_id: "T-UI-001",
         audio_ref: null,
@@ -500,7 +524,10 @@ const speakerConfidenceLabel =
 
   // 🔹 코칭 리포트 평가 전송 함수 (도움 정도 1~5)
   async function handleCoachEval(score) {
-    if (!result) return;
+    if (!result || !encounterId) {
+      setCoachEvalError("먼저 피드백 분석을 실행해 세션을 생성해 주세요.");
+      return;
+    }
     if (coachEvalSending || coachEvalDone) return;
 
     setCoachEvalError("");
@@ -509,7 +536,7 @@ const speakerConfidenceLabel =
 
     try {
       const payload = {
-        encounter_id: "UI-TEST-001",
+        encounter_id: encounterId,
         scenario_code: scenarioCode,
         scale_code: scaleCode,
         model_version: "gpt-4o-mini-omp-v1",
@@ -547,7 +574,10 @@ const speakerConfidenceLabel =
 
   // 🔹 "기록"으로 체크된 섹션들을 실제로 저장하는 함수
   async function handleSaveCoachMemo() {
-    if (!result) return;
+    if (!result || !encounterId) {
+      setCoachMemoError("먼저 피드백 분석을 실행해 세션을 생성해 주세요.");
+      return;
+    }
 
     setCoachMemoError("");
     setCoachMemoDone(false);
@@ -595,7 +625,7 @@ const speakerConfidenceLabel =
 
     try {
       const payload = {
-        encounter_id: "UI-TEST-001",
+        encounter_id: encounterId,
         supervisor_id: "S-UI-001",
         trainee_id: "T-UI-001",
         scenario_code: scenarioCode,
@@ -962,6 +992,14 @@ const speakerConfidenceLabel =
 
       {result && (
         <div className="results">
+          {encounterId && (
+            <section className="card soft">
+              <div style={{ fontSize: 13 }}>
+                <strong>세션 ID:</strong>{" "}
+                <code className="code">{encounterId}</code>
+              </div>
+            </section>
+          )}
 
 {/* 🔹 AI 화자 역할 추론 결과 */}
 {speakerAnalysis && (
