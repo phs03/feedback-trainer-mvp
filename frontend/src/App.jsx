@@ -21,16 +21,6 @@ if (typeof window !== "undefined") {
 
 console.log("[DEBUG] API_BASE =", API_BASE);
 
-// --- 피드백 상황/스케일 옵션 ---
-// value: scenario_code, scaleCode: scale_code
-const SCENARIO_OPTIONS = [
-  {
-    value: "CLINICAL_OMP",
-    label: "임상 진료 후 피드백 (One-Minute Preceptor)",
-    scaleCode: "OMP_CORE_FIVE",
-  },
-];
-
 const LANGUAGE_LABELS = {
   auto: "자동 (Auto)",
   ko: "한국어 (Korean)",
@@ -118,8 +108,8 @@ function App() {
   const [result, setResult] = useState(null);
 
   // 🔹 선택된 시나리오/스케일 상태
-const [scenarioCode, setScenarioCode] = useState("CLINICAL_OMP");
-const [scaleCode, setScaleCode] = useState("OMP_CORE_FIVE");
+  const [scenarioCode] = useState("CLINICAL_OMP");
+  const [scaleCode] = useState("OMP_CORE_FIVE");
 
   // 🔹 STT diarization 결과
   const [segments, setSegments] = useState([]);
@@ -155,16 +145,6 @@ const [scaleCode, setScaleCode] = useState("OMP_CORE_FIVE");
   const [coachMemoSending, setCoachMemoSending] = useState(false);
   const [coachMemoDone, setCoachMemoDone] = useState(false);
   const [coachMemoError, setCoachMemoError] = useState("");
-
-  // 🔹 시나리오 선택 변경
-  function handleScenarioChange(e) {
-    const value = e.target.value;
-    setScenarioCode(value);
-    const found = SCENARIO_OPTIONS.find((opt) => opt.value === value);
-    if (found) {
-      setScaleCode(found.scaleCode);
-    }
-  }
 
   // 🔹 "기록" 체크 토글 함수
   function toggleRecordFlag(flag) {
@@ -444,12 +424,23 @@ const [scaleCode, setScaleCode] = useState("OMP_CORE_FIVE");
     _idx: idx,
   }));
 
+  // 🔹 AI 화자 역할 분석 결과
+  const speakerAnalysis = result?.speaker_analysis || null;
+  const aiSpeakerMapping = speakerAnalysis?.mapping || {};
+
+  // 🔹 현재 화면과 역할별 분리에 적용할 화자 매핑
+  // 기본 모드: AI 추론 결과 / Advanced Mode: 사용자 직접 지정
+  const activeSpeakerMapping = advancedMode
+    ? speakerMapping
+    : aiSpeakerMapping;
+
   // 🔹 역할별 segment 분리
   const traineeSegments = indexedSegments.filter(
-    (seg) => speakerMapping[seg.speaker] === "전공의"
+    (seg) => activeSpeakerMapping[seg.speaker] === "전공의"
   );
+
   const supervisorSegments = indexedSegments.filter(
-    (seg) => speakerMapping[seg.speaker] === "지도전문의"
+    (seg) => activeSpeakerMapping[seg.speaker] === "지도전문의"
   );
 
   // 🔹 특정 segment index에 해당하는 OSAD/OMP 근거 태그들 구하기
@@ -464,9 +455,6 @@ const [scaleCode, setScaleCode] = useState("OMP_CORE_FIVE");
     }
     return tags;
   }
-
-const speakerAnalysis = result?.speaker_analysis || null;
-const aiSpeakerMapping = speakerAnalysis?.mapping || {};
 
 const speakerConfidence =
   speakerAnalysis?.confidence !== undefined &&
@@ -647,14 +635,12 @@ const speakerConfidenceLabel =
   return (
   <div className="app-shell">
     <div className="app-container">
-<h1 className="h1">
-  One-Minute Preceptor 피드백 코칭
-</h1>
-<p className="p-muted">
-  지도전문의와 전공의의 짧은 임상 피드백 대화를 분석하여
-  One-Minute Preceptor의 5개 microskill을 평가하고,
-  다음 피드백에 활용할 수 있는 구체적인 코칭을 제공합니다.
-</p>
+      <h1 className="h1">One-Minute Preceptor 피드백 코칭</h1>
+      <p className="p-muted">
+        지도전문의와 전공의의 짧은 임상 피드백 대화를 분석하여
+        One-Minute Preceptor의 5개 microskill을 평가하고,
+        다음 피드백에 활용할 수 있는 구체적인 코칭을 제공합니다.
+      </p>
 
       {/* 🔹 1. 음성 녹음 영역 */}
       <section className="card">
@@ -808,14 +794,16 @@ const speakerConfidenceLabel =
         </section>
       )}
 
-      {/* 🔹 1-3. 역할별 발언 분리: Advanced Mode에서만 표시 */}
-      {advancedMode && segments && segments.length > 0 && (
+      {/* 🔹 1-3. 역할별 발언 분리 */}
+      {segments &&
+        segments.length > 0 &&
+        Object.keys(activeSpeakerMapping).length > 0 && (
         <section className="card white" style={{ marginBottom: 24 }}>
           <h2 className="h2">1-3. 역할별 발언 분리 (By role)</h2>
           <p className="small" style={{ marginBottom: 10 }}>
-            좌측에는 전공의 발언, 우측에는 지도전문의 발언만 시간
-            순서대로 모아서 보여줍니다. (Left: Resident, Right:
-            Supervisor)
+            기본 모드에서는 AI가 추론한 역할을 기준으로, Advanced Mode에서는
+            사용자가 지정한 역할을 기준으로 전공의와 지도전문의 발언을
+            구분하여 보여줍니다.
           </p>
 
           <div className="two-col">
