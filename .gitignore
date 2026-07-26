@@ -81,3 +81,8 @@ backend/uploads/
 *.mp3
 local.db
 *.db
+
+# Local backup files
+*_backup*.jsx
+*_before_*.jsx
+*_before_*.py

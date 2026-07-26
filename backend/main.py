@@ -16,6 +16,7 @@ import backend.models  # DbHealthCheck, CoachEval, CoachMemo 등 전체 모델 i
 from backend.api.stt import router as stt_router, client as stt_client
 from backend.api.feedback import router as feedback_router
 from backend.api.report import router as report_router
+from backend.api.human_rating import router as human_rating_router
 from backend.api.db_test import router as db_debug_router
 from backend.api import coach_eval
 from backend.api.db_admin import router as db_admin_router  # ★ DB admin 라우터
@@ -173,6 +174,9 @@ app.include_router(feedback_router)
 
 # 코칭 리포트 평가/메모 집계를 위한 추가 라우터 (report)
 app.include_router(report_router)
+
+# 사람이 평가한 결과 입력
+app.include_router(human_rating_router)
 
 # coach_eval용 예전 라우터(호환 목적)
 app.include_router(coach_eval.router)
