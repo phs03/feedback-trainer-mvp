@@ -228,6 +228,120 @@ def export_feedback_sessions_csv(
 
 
 
+
+# =========================
+# 연구 진행 현황 요약
+# =========================
+
+@router.get("/research-status")
+def get_research_status(
+    required_raters: int = Query(
+        default=2,
+        ge=1,
+        le=10,
+        description="세션당 필요한 인간 평가자 수",
+    ),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    연구 진행 상황과 데이터 완성도를 요약한다.
+    """
+
+    try:
+        sessions = db.query(FeedbackSession).all()
+        ratings = db.query(HumanOMPAssessment).all()
+
+        rating_counts = {}
+        unique_raters = set()
+
+        for rating in ratings:
+            rating_counts[rating.encounter_id] = (
+                rating_counts.get(rating.encounter_id, 0) + 1
+            )
+            unique_raters.add(rating.rater_id)
+
+        total_sessions = len(sessions)
+
+        sessions_with_any_human_rating = sum(
+            1
+            for session in sessions
+            if rating_counts.get(session.encounter_id, 0) >= 1
+        )
+
+        sessions_with_required_raters = sum(
+            1
+            for session in sessions
+            if rating_counts.get(session.encounter_id, 0)
+            >= required_raters
+        )
+
+        sessions_without_human_rating = sum(
+            1
+            for session in sessions
+            if rating_counts.get(session.encounter_id, 0) == 0
+        )
+
+        speaker_uncertain_sessions = sum(
+            1
+            for session in sessions
+            if bool(session.speaker_uncertain)
+        )
+
+        low_confidence_sessions = sum(
+            1
+            for session in sessions
+            if (
+                session.speaker_confidence is None
+                or session.speaker_confidence < 0.6
+            )
+        )
+
+        completion_percent = (
+            round(
+                sessions_with_required_raters
+                / total_sessions
+                * 100,
+                1,
+            )
+            if total_sessions > 0
+            else 0.0
+        )
+
+        return {
+            "status": "ok",
+            "required_raters_per_session": required_raters,
+            "total_feedback_sessions": total_sessions,
+            "total_human_ratings": len(ratings),
+            "unique_human_raters": len(unique_raters),
+            "sessions_with_any_human_rating": (
+                sessions_with_any_human_rating
+            ),
+            "sessions_with_required_raters": (
+                sessions_with_required_raters
+            ),
+            "sessions_without_human_rating": (
+                sessions_without_human_rating
+            ),
+            "speaker_uncertain_sessions": (
+                speaker_uncertain_sessions
+            ),
+            "low_confidence_sessions": (
+                low_confidence_sessions
+            ),
+            "rating_completion_percent": completion_percent,
+        }
+
+    except Exception as exc:
+        print(
+            "=== DEBUG: /api/research-status ERROR ===",
+            repr(exc),
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Research status query failed: {exc}",
+        ) from exc
+
+
 # =========================
 # AI-인간 결합 연구 분석 CSV
 # =========================
