@@ -499,6 +499,194 @@ def get_research_pending_sessions(
         ) from exc
 
 
+
+# =========================
+# 미완료·품질점검 세션 CSV
+# =========================
+
+@router.get("/research-pending.csv")
+def export_research_pending_csv(
+    required_raters: int = Query(
+        default=2,
+        ge=1,
+        le=10,
+        description="세션당 필요한 인간 평가자 수",
+    ),
+    include_completed: bool = Query(
+        default=False,
+        description="완료된 세션도 포함할지 여부",
+    ),
+    db: Session = Depends(get_db),
+):
+    """
+    인간 평가가 부족하거나 화자 품질점검이 필요한 세션을 CSV로 내보낸다.
+    """
+
+    try:
+        sessions = (
+            db.query(FeedbackSession)
+            .order_by(
+                FeedbackSession.created_at.asc(),
+                FeedbackSession.id.asc(),
+            )
+            .all()
+        )
+
+        ratings = db.query(HumanOMPAssessment).all()
+
+        ratings_by_encounter = {}
+
+        for rating in ratings:
+            ratings_by_encounter.setdefault(
+                rating.encounter_id,
+                [],
+            ).append(rating)
+
+        text_buffer = io.StringIO()
+        writer = csv.writer(
+            text_buffer,
+            lineterminator="\n",
+        )
+
+        writer.writerow(
+            [
+                "feedback_session_id",
+                "encounter_id",
+                "supervisor_id",
+                "trainee_id",
+                "omp_total",
+                "omp_percent",
+                "speaker_confidence",
+                "speaker_confidence_label",
+                "speaker_uncertain",
+                "human_rating_count",
+                "required_raters",
+                "missing_rater_count",
+                "rater_ids",
+                "needs_rating",
+                "needs_speaker_review",
+                "completed",
+                "reasons",
+                "created_at_utc",
+                "created_at_kst",
+            ]
+        )
+
+        for session in sessions:
+            session_ratings = ratings_by_encounter.get(
+                session.encounter_id,
+                [],
+            )
+
+            rater_ids = sorted(
+                {
+                    rating.rater_id
+                    for rating in session_ratings
+                }
+            )
+
+            rating_count = len(rater_ids)
+            missing_rater_count = max(
+                0,
+                required_raters - rating_count,
+            )
+
+            needs_rating = rating_count < required_raters
+
+            needs_speaker_review = bool(
+                session.speaker_uncertain
+            ) or (
+                session.speaker_confidence is None
+                or session.speaker_confidence < 0.6
+            )
+
+            completed = (
+                not needs_rating
+                and not needs_speaker_review
+            )
+
+            if completed and not include_completed:
+                continue
+
+            reasons = []
+
+            if needs_rating:
+                reasons.append(
+                    f"인간 평가 {missing_rater_count}건 부족"
+                )
+
+            if bool(session.speaker_uncertain):
+                reasons.append("화자 역할 추론 불확실")
+
+            if session.speaker_confidence is None:
+                reasons.append("화자 신뢰도 없음")
+            elif session.speaker_confidence < 0.6:
+                reasons.append("화자 신뢰도 낮음")
+
+            created_at_utc = session.created_at
+            created_at_kst = (
+                created_at_utc + timedelta(hours=9)
+                if created_at_utc
+                else None
+            )
+
+            writer.writerow(
+                [
+                    session.id,
+                    session.encounter_id,
+                    session.supervisor_id,
+                    session.trainee_id,
+                    session.omp_total,
+                    session.omp_percent,
+                    session.speaker_confidence,
+                    session.speaker_confidence_label,
+                    session.speaker_uncertain,
+                    rating_count,
+                    required_raters,
+                    missing_rater_count,
+                    "|".join(rater_ids),
+                    needs_rating,
+                    needs_speaker_review,
+                    completed,
+                    " | ".join(reasons),
+                    (
+                        created_at_utc.isoformat()
+                        if created_at_utc
+                        else ""
+                    ),
+                    (
+                        created_at_kst.isoformat()
+                        if created_at_kst
+                        else ""
+                    ),
+                ]
+            )
+
+        csv_bytes = (
+            "\ufeff" + text_buffer.getvalue()
+        ).encode("utf-8")
+
+        return StreamingResponse(
+            io.BytesIO(csv_bytes),
+            media_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": (
+                    'attachment; filename="research_pending.csv"'
+                )
+            },
+        )
+
+    except Exception as exc:
+        print(
+            "=== DEBUG: /api/research-pending.csv ERROR ===",
+            repr(exc),
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Research pending CSV export failed: {exc}",
+        ) from exc
+
+
 # =========================
 # AI-인간 결합 연구 분석 CSV
 # =========================
