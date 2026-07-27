@@ -342,6 +342,163 @@ def get_research_status(
         ) from exc
 
 
+
+# =========================
+# 연구 미완료·품질점검 세션 목록
+# =========================
+
+@router.get("/research-pending")
+def get_research_pending_sessions(
+    required_raters: int = Query(
+        default=2,
+        ge=1,
+        le=10,
+        description="세션당 필요한 인간 평가자 수",
+    ),
+    include_completed: bool = Query(
+        default=False,
+        description="완료된 세션도 포함할지 여부",
+    ),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    인간 평가가 부족하거나 화자 분석 품질점검이 필요한 세션을 반환한다.
+    """
+
+    try:
+        sessions = (
+            db.query(FeedbackSession)
+            .order_by(
+                FeedbackSession.created_at.asc(),
+                FeedbackSession.id.asc(),
+            )
+            .all()
+        )
+
+        ratings = db.query(HumanOMPAssessment).all()
+
+        ratings_by_encounter = {}
+
+        for rating in ratings:
+            ratings_by_encounter.setdefault(
+                rating.encounter_id,
+                [],
+            ).append(rating)
+
+        items = []
+
+        for session in sessions:
+            session_ratings = ratings_by_encounter.get(
+                session.encounter_id,
+                [],
+            )
+
+            rater_ids = sorted(
+                {
+                    rating.rater_id
+                    for rating in session_ratings
+                }
+            )
+            rating_count = len(rater_ids)
+            missing_rater_count = max(
+                0,
+                required_raters - rating_count,
+            )
+
+            needs_rating = rating_count < required_raters
+            needs_speaker_review = bool(
+                session.speaker_uncertain
+            ) or (
+                session.speaker_confidence is None
+                or session.speaker_confidence < 0.6
+            )
+
+            completed = (
+                not needs_rating
+                and not needs_speaker_review
+            )
+
+            if completed and not include_completed:
+                continue
+
+            reasons = []
+
+            if needs_rating:
+                reasons.append(
+                    f"인간 평가 {missing_rater_count}건 부족"
+                )
+
+            if bool(session.speaker_uncertain):
+                reasons.append("화자 역할 추론 불확실")
+
+            if session.speaker_confidence is None:
+                reasons.append("화자 신뢰도 없음")
+            elif session.speaker_confidence < 0.6:
+                reasons.append("화자 신뢰도 낮음")
+
+            items.append(
+                {
+                    "feedback_session_id": session.id,
+                    "encounter_id": session.encounter_id,
+                    "supervisor_id": session.supervisor_id,
+                    "trainee_id": session.trainee_id,
+                    "omp_total": session.omp_total,
+                    "omp_percent": session.omp_percent,
+                    "speaker_confidence": (
+                        session.speaker_confidence
+                    ),
+                    "speaker_confidence_label": (
+                        session.speaker_confidence_label
+                    ),
+                    "speaker_uncertain": (
+                        session.speaker_uncertain
+                    ),
+                    "human_rating_count": rating_count,
+                    "required_raters": required_raters,
+                    "missing_rater_count": (
+                        missing_rater_count
+                    ),
+                    "rater_ids": rater_ids,
+                    "needs_rating": needs_rating,
+                    "needs_speaker_review": (
+                        needs_speaker_review
+                    ),
+                    "completed": completed,
+                    "reasons": reasons,
+                    "created_at": (
+                        session.created_at.isoformat()
+                        if session.created_at
+                        else None
+                    ),
+                }
+            )
+
+        pending_count = sum(
+            1
+            for item in items
+            if not item["completed"]
+        )
+
+        return {
+            "status": "ok",
+            "required_raters_per_session": required_raters,
+            "include_completed": include_completed,
+            "count": len(items),
+            "pending_count": pending_count,
+            "items": items,
+        }
+
+    except Exception as exc:
+        print(
+            "=== DEBUG: /api/research-pending ERROR ===",
+            repr(exc),
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Research pending query failed: {exc}",
+        ) from exc
+
+
 # =========================
 # AI-인간 결합 연구 분석 CSV
 # =========================
