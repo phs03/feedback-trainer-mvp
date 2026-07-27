@@ -16,7 +16,10 @@ from reportlab.pdfgen import canvas
 from sqlalchemy.orm import Session
 
 from backend.db import get_db
-from backend.models.feedback_models import FeedbackSession
+from backend.models.feedback_models import (
+    FeedbackSession,
+    HumanOMPAssessment,
+)
 
 router = APIRouter(prefix="/api", tags=["report"])
 
@@ -221,6 +224,252 @@ def export_feedback_sessions_csv(
         raise HTTPException(
             status_code=500,
             detail=f"Feedback session CSV export failed: {exc}",
+        ) from exc
+
+
+
+# =========================
+# AI-인간 결합 연구 분석 CSV
+# =========================
+
+@router.get("/research-analysis.csv")
+def export_research_analysis_csv(
+    db: Session = Depends(get_db),
+):
+    """
+    AI 평가와 인간 평가를 encounter_id 기준으로 결합해 CSV로 내보낸다.
+
+    한 인간 평가당 한 행을 생성하는 long format이다.
+    평가자 2명이 같은 세션을 평가하면 같은 encounter_id로 2행이 생성된다.
+    인간 평가가 아직 없는 AI 세션도 포함하며 human_* 값은 비워 둔다.
+    """
+
+    try:
+        sessions = (
+            db.query(FeedbackSession)
+            .order_by(
+                FeedbackSession.created_at.asc(),
+                FeedbackSession.id.asc(),
+            )
+            .all()
+        )
+
+        ratings = (
+            db.query(HumanOMPAssessment)
+            .order_by(
+                HumanOMPAssessment.encounter_id.asc(),
+                HumanOMPAssessment.rater_id.asc(),
+            )
+            .all()
+        )
+
+        ratings_by_encounter = {}
+
+        for rating in ratings:
+            ratings_by_encounter.setdefault(
+                rating.encounter_id,
+                [],
+            ).append(rating)
+
+        text_buffer = io.StringIO()
+        writer = csv.writer(
+            text_buffer,
+            lineterminator="\n",
+        )
+
+        writer.writerow(
+            [
+                "encounter_id",
+                "feedback_session_id",
+                "supervisor_id",
+                "trainee_id",
+                "scenario_code",
+                "scale_code",
+                "trainee_level",
+                "language",
+                "speaker_mode",
+                "speaker_confidence",
+                "speaker_confidence_label",
+                "speaker_uncertain",
+                "ai_get_commitment",
+                "ai_probe_for_supporting_evidence",
+                "ai_teach_general_rules",
+                "ai_reinforce_what_was_done_right",
+                "ai_correct_mistakes",
+                "ai_omp_total",
+                "ai_omp_scale",
+                "ai_omp_percent",
+                "rater_id",
+                "human_get_commitment",
+                "human_probe_for_supporting_evidence",
+                "human_teach_general_rules",
+                "human_reinforce_what_was_done_right",
+                "human_correct_mistakes",
+                "human_omp_total",
+                "human_omp_scale",
+                "human_omp_percent",
+                "human_comment",
+                "ai_minus_human_get_commitment",
+                "ai_minus_human_probe_for_supporting_evidence",
+                "ai_minus_human_teach_general_rules",
+                "ai_minus_human_reinforce_what_was_done_right",
+                "ai_minus_human_correct_mistakes",
+                "ai_minus_human_total",
+                "model_version",
+                "prompt_version",
+                "session_created_at_utc",
+                "session_created_at_kst",
+                "human_rating_created_at_utc",
+                "human_rating_created_at_kst",
+                "human_rating_updated_at_utc",
+                "human_rating_updated_at_kst",
+            ]
+        )
+
+        def to_iso(value):
+            return value.isoformat() if value else ""
+
+        def to_kst_iso(value):
+            if not value:
+                return ""
+            return (value + timedelta(hours=9)).isoformat()
+
+        def difference(ai_value, human_value):
+            if ai_value is None or human_value in ("", None):
+                return ""
+            return ai_value - human_value
+
+        for session in sessions:
+            session_ratings = ratings_by_encounter.get(
+                session.encounter_id,
+                [],
+            )
+
+            rows_to_write = session_ratings or [None]
+
+            for rating in rows_to_write:
+                if rating is None:
+                    rater_id = ""
+                    human_get_commitment = ""
+                    human_probe = ""
+                    human_general_rules = ""
+                    human_reinforcement = ""
+                    human_correction = ""
+                    human_total = ""
+                    human_scale = ""
+                    human_percent = ""
+                    human_comment = ""
+                    rating_created_at = None
+                    rating_updated_at = None
+                else:
+                    rater_id = rating.rater_id
+                    human_get_commitment = rating.get_commitment
+                    human_probe = (
+                        rating.probe_for_supporting_evidence
+                    )
+                    human_general_rules = (
+                        rating.teach_general_rules
+                    )
+                    human_reinforcement = (
+                        rating.reinforce_what_was_done_right
+                    )
+                    human_correction = rating.correct_mistakes
+                    human_total = rating.omp_total
+                    human_scale = rating.omp_scale
+                    human_percent = rating.omp_percent
+                    human_comment = rating.comment or ""
+                    rating_created_at = rating.created_at
+                    rating_updated_at = rating.updated_at
+
+                writer.writerow(
+                    [
+                        session.encounter_id,
+                        session.id,
+                        session.supervisor_id,
+                        session.trainee_id,
+                        session.scenario_code,
+                        session.scale_code,
+                        session.trainee_level,
+                        session.language,
+                        session.speaker_mode,
+                        session.speaker_confidence,
+                        session.speaker_confidence_label,
+                        session.speaker_uncertain,
+                        session.get_commitment,
+                        session.probe_for_supporting_evidence,
+                        session.teach_general_rules,
+                        session.reinforce_what_was_done_right,
+                        session.correct_mistakes,
+                        session.omp_total,
+                        session.omp_scale,
+                        session.omp_percent,
+                        rater_id,
+                        human_get_commitment,
+                        human_probe,
+                        human_general_rules,
+                        human_reinforcement,
+                        human_correction,
+                        human_total,
+                        human_scale,
+                        human_percent,
+                        human_comment,
+                        difference(
+                            session.get_commitment,
+                            human_get_commitment,
+                        ),
+                        difference(
+                            session.probe_for_supporting_evidence,
+                            human_probe,
+                        ),
+                        difference(
+                            session.teach_general_rules,
+                            human_general_rules,
+                        ),
+                        difference(
+                            session.reinforce_what_was_done_right,
+                            human_reinforcement,
+                        ),
+                        difference(
+                            session.correct_mistakes,
+                            human_correction,
+                        ),
+                        difference(
+                            session.omp_total,
+                            human_total,
+                        ),
+                        session.model_version,
+                        session.prompt_version,
+                        to_iso(session.created_at),
+                        to_kst_iso(session.created_at),
+                        to_iso(rating_created_at),
+                        to_kst_iso(rating_created_at),
+                        to_iso(rating_updated_at),
+                        to_kst_iso(rating_updated_at),
+                    ]
+                )
+
+        csv_bytes = (
+            "\ufeff" + text_buffer.getvalue()
+        ).encode("utf-8")
+
+        return StreamingResponse(
+            io.BytesIO(csv_bytes),
+            media_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": (
+                    'attachment; filename="research_analysis.csv"'
+                )
+            },
+        )
+
+    except Exception as exc:
+        print(
+            "=== DEBUG: /api/research-analysis.csv ERROR ===",
+            repr(exc),
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Research analysis CSV export failed: {exc}",
         ) from exc
 
 
