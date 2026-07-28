@@ -973,7 +973,7 @@ def generate_report(body: ReportBody):
         y = height - 40
 
         pdf.setFont(font_name, 16)
-        pdf.drawString(40, y, "OSAD Feedback Report")
+        pdf.drawString(40, y, "OMP Feedback Report")
         y -= 24
 
         pdf.setFont(font_name, 12)
@@ -987,7 +987,7 @@ def generate_report(body: ReportBody):
 
         y -= 10
         pdf.setFont(font_name, 12)
-        pdf.drawString(40, y, "OSAD Domains:")
+        pdf.drawString(40, y, "OMP Microskills:")
         y -= 16
         pdf.setFont(font_name, 10)
 
@@ -1046,7 +1046,7 @@ def generate_report(body: ReportBody):
             media_type="application/pdf",
             headers={
                 "Content-Disposition": (
-                    "attachment; filename=OSAD_Report.pdf"
+                    "attachment; filename=OMP_Report.pdf"
                 )
             },
         )
