@@ -1387,7 +1387,7 @@ const speakerConfidenceLabel =
                       color: "#fff",
                     }}
                   >
-                    코칭 리포트 기록 저장하기
+                    코칭 연구 자료 전송하기
                   </button>
                   <span className="muted" style={{ fontSize: 12 }}>
                     각 섹션 제목 옆의 {"'기록'"} 체크가 된 항목들이 저장됩니다.
