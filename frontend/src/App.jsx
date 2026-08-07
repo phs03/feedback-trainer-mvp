@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+﻿import { useState, useRef } from "react";
 
 // --- API_BASE 설정 ---
 // 기본값: 로컬 개발용 백엔드
@@ -196,8 +196,8 @@ function App() {
     try {
       const payload = {
         encounter_id: analysisEncounterId,
-        supervisor_id: "S-UI-001",
-        trainee_id: "T-UI-001",
+        supervisor_id: "FAC-001",
+        trainee_id: "RES-001",
         audio_ref: null,
         transcript: transcript,
         trainee_level: "PGY-2",
@@ -510,7 +510,7 @@ const speakerConfidenceLabel =
   const osadScale =
     result && result.osad && typeof result.osad.scale === "number"
       ? result.osad.scale
-      : 45;
+      : 25;
 
   const osadPercent =
     osadTotal !== null && osadScale > 0
@@ -626,8 +626,8 @@ const speakerConfidenceLabel =
     try {
       const payload = {
         encounter_id: encounterId,
-        supervisor_id: "S-UI-001",
-        trainee_id: "T-UI-001",
+        supervisor_id: "FAC-001",
+        trainee_id: "RES-001",
         scenario_code: scenarioCode,
         scale_code: scaleCode,
         model_version: "gpt-4o-mini-omp-v1",
@@ -1387,7 +1387,7 @@ const speakerConfidenceLabel =
                       color: "#fff",
                     }}
                   >
-                    코칭 연구 자료 전송하기
+                    코칭 연구 자료 저장하기
                   </button>
                   <span className="muted" style={{ fontSize: 12 }}>
                     각 섹션 제목 옆의 {"'기록'"} 체크가 된 항목들이 저장됩니다.
@@ -1415,3 +1415,4 @@ const speakerConfidenceLabel =
 }
 
 export default App;
+
