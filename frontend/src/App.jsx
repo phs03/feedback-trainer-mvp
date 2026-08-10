@@ -167,6 +167,12 @@ function App() {
   const [coachMemoDone, setCoachMemoDone] = useState(false);
   const [coachMemoError, setCoachMemoError] = useState("");
 
+  // 🔹 연구 평가자 인증 상태
+  const [reviewerLoginOpen, setReviewerLoginOpen] = useState(false);
+  const [reviewerPassword, setReviewerPassword] = useState("");
+  const [reviewerLoginSending, setReviewerLoginSending] = useState(false);
+  const [reviewerLoginError, setReviewerLoginError] = useState("");
+
   // 🔹 "기록" 체크 토글 함수
   function toggleRecordFlag(flag) {
     setRecordFlags((prev) =>
@@ -539,7 +545,7 @@ const speakerConfidenceLabel =
         encounter_id: encounterId,
         scenario_code: scenarioCode,
         scale_code: scaleCode,
-        model_version: "gpt-4o-mini-omp-v1",
+        model_version: "gpt-5.6-terra-low-omp-v1",
         helpful_score: score,
         helpful_flags: recordFlags.length ? recordFlags : null,
         comment: null,
@@ -630,7 +636,7 @@ const speakerConfidenceLabel =
         trainee_id: "RES-001",
         scenario_code: scenarioCode,
         scale_code: scaleCode,
-        model_version: "gpt-4o-mini-omp-v1",
+        model_version: "gpt-5.6-terra-low-omp-v1",
         saved_sections: selected,
         note: null,
       };
@@ -661,16 +667,189 @@ const speakerConfidenceLabel =
       setCoachMemoSending(false);
     }
   }
-  
+
+  // 🔹 연구 평가자 로그인
+  async function handleReviewerLogin() {
+    if (!reviewerPassword.trim()) {
+      setReviewerLoginError("비밀번호를 입력해 주세요.");
+      return;
+    }
+
+    setReviewerLoginSending(true);
+    setReviewerLoginError("");
+
+    try {
+      const res = await fetch(`${API_BASE}/api/reviewer-auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: reviewerPassword }),
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error("비밀번호가 올바르지 않습니다.");
+        }
+        const body = await res.text();
+        throw new Error(`평가자 인증 실패: ${res.status} - ${body}`);
+      }
+
+      const data = await res.json();
+      if (!data.access_token) {
+        throw new Error("인증 토큰을 받지 못했습니다.");
+      }
+
+      sessionStorage.setItem("reviewer_token", data.access_token);
+      sessionStorage.setItem(
+        "reviewer_token_expires_at",
+        String(data.expires_at || "")
+      );
+
+      // 비밀번호 인증 직후 1회만 /reviewer 진입 허용
+      sessionStorage.setItem("reviewer_entry_grant", String(Date.now()));
+
+      window.location.href = "/reviewer";
+    } catch (err) {
+      console.error(err);
+      setReviewerLoginError(
+        err.message || "평가자 인증 중 오류가 발생했습니다."
+      );
+    } finally {
+      setReviewerLoginSending(false);
+    }
+  }
+
+  function closeReviewerLogin() {
+    setReviewerLoginOpen(false);
+    setReviewerPassword("");
+    setReviewerLoginError("");
+  }
+
   return (
   <div className="app-shell">
     <div className="app-container">
+
+      {/* 연구 평가자 진입 버튼: 기존 레이아웃과 분리 */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+        <button
+          type="button"
+          className="btn ghost"
+          onClick={() => {
+            setReviewerLoginOpen(true);
+            setReviewerLoginError("");
+            setReviewerPassword("");
+          }}
+          style={{
+            padding: "6px 10px",
+            fontSize: 12,
+            whiteSpace: "nowrap",
+          }}
+        >
+          연구 평가자
+        </button>
+      </div>
+
       <h1 className="h1">One-Minute Preceptor 피드백 코칭</h1>
       <p className="p-muted">
         지도전문의와 전공의의 짧은 임상 피드백 대화를 분석하여
         One-Minute Preceptor의 5개 microskill을 평가하고,
         다음 피드백에 활용할 수 있는 구체적인 코칭을 제공합니다.
       </p>
+
+      {/* 연구 평가자 비밀번호 입력 팝업 */}
+      {reviewerLoginOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="연구 평가자 인증"
+          onClick={closeReviewerLogin}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            background: "rgba(0,0,0,0.35)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              margin: 0,
+              boxSizing: "border-box",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                marginBottom: 12,
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 700 }}>연구 평가자 인증</div>
+                <div className="muted" style={{ marginTop: 4, fontSize: 12 }}>
+                  평가자 전용 화면에 접속하려면 비밀번호를 입력하세요.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={closeReviewerLogin}
+                aria-label="닫기"
+                style={{ padding: "4px 8px" }}
+              >
+                닫기
+              </button>
+            </div>
+
+            <input
+              type="password"
+              value={reviewerPassword}
+              onChange={(e) => {
+                setReviewerPassword(e.target.value);
+                setReviewerLoginError("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !reviewerLoginSending) {
+                  handleReviewerLogin();
+                }
+              }}
+              className="input"
+              placeholder="평가자 비밀번호"
+              autoFocus
+              style={{ width: "100%", boxSizing: "border-box" }}
+            />
+
+            <button
+              type="button"
+              className="btn primary"
+              onClick={handleReviewerLogin}
+              disabled={reviewerLoginSending}
+              style={{
+                width: "100%",
+                marginTop: 10,
+                justifyContent: "center",
+              }}
+            >
+              {reviewerLoginSending ? "확인 중..." : "접속"}
+            </button>
+
+            {reviewerLoginError && (
+              <div className="err" style={{ marginTop: 8 }}>
+                {reviewerLoginError}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 🔹 1. 음성 녹음 영역 */}
       <section className="card">
@@ -711,41 +890,67 @@ const speakerConfidenceLabel =
             </div>
           )}
 
-          <div className="row" style={{ fontSize: 13 }}>
+          <div
+            className="row"
+            style={{
+              fontSize: 13,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
             <span>
               <strong>사용 언어 (Language for coaching):</strong>
             </span>
-            <select className="select" value={language} onChange={(e) => setLanguage(e.target.value)}>
+
+            <select
+              className="select"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+            >
               {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
                 <option key={code} value={code}>
                   {label}
                 </option>
               ))}
             </select>
-            <span className="muted">
+
+            <span className="muted" style={{ flex: "1 1 260px" }}>
               (자동: 지도전문의 발언 언어를 추론하여 사용, 불분명하면 한국어)
             </span>
+
+            <label
+              className="row"
+              style={{
+                gap: 7,
+                fontWeight: 600,
+                marginLeft: "auto",
+                whiteSpace: "nowrap",
+                padding: "6px 10px",
+                border: "1px solid #d1d5db",
+                borderRadius: 8,
+                background: advancedMode ? "#111827" : "#ffffff",
+                color: advancedMode ? "#ffffff" : "#111827",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={advancedMode}
+                onChange={(e) => setAdvancedMode(e.target.checked)}
+              />
+              <span>Advanced Mode: 화자 역할 직접 지정</span>
+            </label>
           </div>
-        </div>
-      </section>
 
-      {/* 🔹 Advanced Mode 설정: 녹음/STT 전에도 항상 표시 */}
-      <section className="card soft">
-        <div className="advanced-mode-box">
-          <label className="row" style={{ gap: 8, fontWeight: 600 }}>
-            <input
-              type="checkbox"
-              checked={advancedMode}
-              onChange={(e) => setAdvancedMode(e.target.checked)}
-            />
-            <span>Advanced Mode: 화자 역할 직접 지정</span>
-          </label>
-
-          <p className="hint-text" style={{ marginTop: 8, marginBottom: 0 }}>
+          <div
+            className="hint-text"
+            style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}
+          >
             {advancedMode
               ? "고급 모드에서는 각 화자의 역할을 직접 지정합니다."
               : "기본 모드에서는 AI가 지도전문의와 전공의 역할을 자동으로 추론합니다."}
-          </p>
+          </div>
         </div>
       </section>
 
@@ -966,15 +1171,50 @@ const speakerConfidenceLabel =
 
       {/* 🔹 2. 텍스트 입력 + 분석 */}
       <form onSubmit={handleAnalyze}>
-        <label htmlFor="transcript" className="label">
-          2. 피드백 대화 transcript
-        </label>
+        <div
+          className="row"
+          style={{
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 6,
+          }}
+        >
+          <label htmlFor="transcript" className="label" style={{ margin: 0 }}>
+            2. 피드백 대화 transcript
+          </label>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              padding: "4px 8px",
+              borderRadius: 999,
+              background: "#eef2ff",
+              color: "#3730a3",
+              border: "1px solid #c7d2fe",
+            }}
+          >
+            확인 후 직접 수정 가능
+          </span>
+        </div>
+        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
+          역할별 발언을 확인한 뒤 오인식된 단어나 문장을 직접 수정하고 분석할 수 있습니다.
+        </div>
         <textarea
           id="transcript"
           value={transcript}
           onChange={(e) => setTranscript(e.target.value)}
-          rows={8}
+          rows={6}
           className={`textarea ${error ? "error" : ""}`}
+          style={{
+            display: "block",
+            width: "100%",
+            maxWidth: "100%",
+            minHeight: 130,
+            height: "auto",
+            boxSizing: "border-box",
+            resize: "vertical",
+            overflow: "auto",
+          }}
         />
 
         <div className="row" style={{ marginTop: 12 }}>
@@ -1273,8 +1513,17 @@ const speakerConfidenceLabel =
 
               {/* 강점 */}
               <div style={{ marginBottom: 14 }}>
-                <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
-                  <h3 className="h3">강점 (Strengths)</h3>
+                <div
+                  className="row"
+                  style={{
+                    justifyContent: "flex-start",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 6,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <h3 className="h3" style={{ margin: 0 }}>강점 (Strengths)</h3>
                   <label className="row" style={{ gap: 6, fontSize: 12, color: "#374151" }}>
                     <input
                       type="checkbox"
@@ -1292,8 +1541,17 @@ const speakerConfidenceLabel =
 
               {/* 개선 상위 3가지 */}
               <div style={{ marginBottom: 14 }}>
-                <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
-                  <h3 className="h3">개선이 필요한 상위 3가지 (Top 3 improvements)</h3>
+                <div
+                  className="row"
+                  style={{
+                    justifyContent: "flex-start",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 6,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <h3 className="h3" style={{ margin: 0 }}>개선이 필요한 상위 3가지 (Top 3 improvements)</h3>
                   <label className="row" style={{ gap: 6, fontSize: 12, color: "#374151" }}>
                     <input
                       type="checkbox"
@@ -1311,8 +1569,17 @@ const speakerConfidenceLabel =
 
               {/* Script next time */}
               <div style={{ marginBottom: 12 }}>
-                <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
-                  <h3 className="h3">다음에 이렇게 말해보세요 (Script next time)</h3>
+                <div
+                  className="row"
+                  style={{
+                    justifyContent: "flex-start",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 6,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <h3 className="h3" style={{ margin: 0 }}>다음에 이렇게 말해보세요 (Script next time)</h3>
                   <label className="row" style={{ gap: 6, fontSize: 12, color: "#374151" }}>
                     <input
                       type="checkbox"
@@ -1327,8 +1594,17 @@ const speakerConfidenceLabel =
 
               {/* 10초 미세 습관 */}
               <div style={{ marginBottom: 6 }}>
-                <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
-                  <h3 className="h3">10초짜리 미세 습관 (10-second micro habit)</h3>
+                <div
+                  className="row"
+                  style={{
+                    justifyContent: "flex-start",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 6,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <h3 className="h3" style={{ margin: 0 }}>10초짜리 미세 습관 (10-second micro habit)</h3>
                   <label className="row" style={{ gap: 6, fontSize: 12, color: "#374151" }}>
                     <input
                       type="checkbox"
@@ -1356,9 +1632,16 @@ const speakerConfidenceLabel =
                         disabled={coachEvalSending || coachEvalDone}
                         className="btn pill"
                         style={{
-                          borderColor: isSelected ? "var(--brand)" : "#d1d5db",
-                          background: isSelected ? "var(--brand)" : "#fff",
-                          color: isSelected ? "#fff" : "#111827",
+                          borderColor: isSelected ? "#111827" : "#d1d5db",
+                          background: isSelected ? "#111827" : "#ffffff",
+                          color: isSelected ? "#ffffff" : "#111827",
+                          fontWeight: isSelected ? 800 : 600,
+                          boxShadow: isSelected
+                            ? "0 0 0 3px rgba(17, 24, 39, 0.20)"
+                            : "none",
+                          transform: isSelected ? "scale(1.08)" : "scale(1)",
+                          opacity: 1,
+                          transition: "all 0.12s ease",
                         }}
                       >
                         {score}
@@ -1415,4 +1698,5 @@ const speakerConfidenceLabel =
 }
 
 export default App;
+
 

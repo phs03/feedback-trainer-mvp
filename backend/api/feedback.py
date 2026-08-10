@@ -1,4 +1,4 @@
-# backend/api/feedback.py
+﻿# backend/api/feedback.py
 
 import json
 import uuid
@@ -136,7 +136,7 @@ class CoachEvalRequest(BaseModel):
 
     scenario_code: str = "CLINICAL_OMP"
     scale_code: str = "OMP_CORE_FIVE"
-    model_version: Optional[str] = "gpt-4o-mini-omp-v1"
+    model_version: Optional[str] = "gpt-5.6-terra-low-omp-v1"
 
     helpful_score: int = Field(..., ge=1, le=5, description="1~5점 Likert")
     helpful_flags: Optional[List[str]] = None
@@ -150,7 +150,7 @@ class CoachMemoRequest(BaseModel):
 
     scenario_code: str = "CLINICAL_OMP"
     scale_code: str = "OMP_CORE_FIVE"
-    model_version: Optional[str] = "gpt-4o-mini-omp-v1"
+    model_version: Optional[str] = "gpt-5.6-terra-low-omp-v1"
 
     saved_sections: Dict[str, str]
     note: Optional[str] = None
@@ -744,8 +744,8 @@ async def analyze_feedback(
 
     try:
         resp = openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0.2,
+            model="gpt-5.6-terra",
+            reasoning_effort="low",
             response_format={"type": "json_object"},
             messages=[
                 {
@@ -811,7 +811,7 @@ async def analyze_feedback(
 
         # ---------- 연구용 세션 메타데이터 ----------
 
-        model_version = "gpt-4o-mini-omp-v1"
+        model_version = "gpt-5.6-terra-low-omp-v1"
         prompt_version = "omp-feedback-prompt-v1"
 
         encounter_id = (

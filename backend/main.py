@@ -20,6 +20,9 @@ from backend.api.human_rating import router as human_rating_router
 from backend.api.db_test import router as db_debug_router
 from backend.api import coach_eval
 from backend.api.db_admin import router as db_admin_router  # ★ DB admin 라우터
+from backend.api.reviewer_auth import router as reviewer_auth_router # 연구 평가자 인증 / 평가 화면 API
+from backend.api.reviewer_api import router as reviewer_api_router
+
 
 app = FastAPI(
     title="AI Feedback MVP",
@@ -186,3 +189,11 @@ app.include_router(db_debug_router)
 
 # DB admin용 (/db/admin/...) - 로우 카운트, truncate 등
 app.include_router(db_admin_router)
+
+# 연구 평가자 비밀번호 인증
+app.include_router(reviewer_auth_router)
+
+# 연구 평가자용 세션 조회 및 평가 API
+app.include_router(reviewer_api_router)
+
+
