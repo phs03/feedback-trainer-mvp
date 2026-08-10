@@ -881,59 +881,17 @@ const speakerConfidenceLabel =
 
         {recordingStatus && <p className="status">{recordingStatus}</p>}
 
-        {/* 🔹 STT에서 감지한 언어 + 코칭 언어 선택 */}
-        <div className="card soft" style={{ marginTop: 12 }}>
+        {/* 🔹 Advanced Mode + 코칭 언어 선택 */}
+        <div className="card soft control-panel" style={{ marginTop: 12 }}>
           {detectedLanguage && (
-            <div style={{ marginBottom: 8, fontSize: 13 }}>
+            <div className="control-meta">
               <strong>자동 감지된 언어 (Detected language):</strong>{" "}
               {renderDetectedLanguage(detectedLanguage)}
             </div>
           )}
 
-          <div
-            className="row"
-            style={{
-              fontSize: 13,
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              flexWrap: "wrap",
-            }}
-          >
-            <span>
-              <strong>사용 언어 (Language for coaching):</strong>
-            </span>
-
-            <select
-              className="select"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-            >
-              {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
-                <option key={code} value={code}>
-                  {label}
-                </option>
-              ))}
-            </select>
-
-            <span className="muted" style={{ flex: "1 1 260px" }}>
-              (자동: 지도전문의 발언 언어를 추론하여 사용, 불분명하면 한국어)
-            </span>
-
-            <label
-              className="row"
-              style={{
-                gap: 7,
-                fontWeight: 600,
-                marginLeft: "auto",
-                whiteSpace: "nowrap",
-                padding: "6px 10px",
-                border: "1px solid #d1d5db",
-                borderRadius: 8,
-                background: advancedMode ? "#111827" : "#ffffff",
-                color: advancedMode ? "#ffffff" : "#111827",
-              }}
-            >
+          <div className="control-row">
+            <label className="advanced-control">
               <input
                 type="checkbox"
                 checked={advancedMode}
@@ -941,16 +899,30 @@ const speakerConfidenceLabel =
               />
               <span>Advanced Mode: 화자 역할 직접 지정</span>
             </label>
+
+            <div className="language-control">
+              <span className="control-label">
+                사용 언어 (Language for coaching):
+              </span>
+              <select
+                className="select"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+              >
+                {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
+                  <option key={code} value={code}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div
-            className="hint-text"
-            style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}
-          >
-            {advancedMode
-              ? "고급 모드에서는 각 화자의 역할을 직접 지정합니다."
-              : "기본 모드에서는 AI가 지도전문의와 전공의 역할을 자동으로 추론합니다."}
-          </div>
+          {advancedMode && (
+            <div className="hint-text" style={{ marginTop: 8, marginBottom: 0 }}>
+              각 화자의 역할을 직접 지정합니다.
+            </div>
+          )}
         </div>
       </section>
 

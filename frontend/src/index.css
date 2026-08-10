@@ -216,3 +216,261 @@ input[type="checkbox"] {
   accent-color: #2563eb;
 }
 ```
+
+/* ===== OMP UI CONSISTENCY 2026-08 ===== */
+:root {
+  --omp-text: #263238;
+  --omp-muted: #667085;
+  --omp-border: #d8dee8;
+  --omp-bg: #f5f7fa;
+  --omp-surface: #ffffff;
+  --omp-soft: #f8fafc;
+  --omp-primary: #526d82;
+  --omp-primary-hover: #40576a;
+  --omp-soft-blue: #eef3f7;
+}
+
+body {
+  background: var(--omp-bg);
+  color: var(--omp-text);
+}
+
+.app-shell {
+  color: var(--omp-text);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.app-shell .p-muted,
+.app-shell .small,
+.app-shell .muted,
+.app-shell .hint-text,
+.app-shell .status,
+.app-shell .label {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.app-shell .label {
+  font-weight: 700;
+  color: var(--omp-text);
+}
+
+.app-shell .h2 {
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 700;
+  color: var(--omp-text);
+}
+
+.app-shell .h3 {
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+  color: var(--omp-text);
+}
+
+.app-shell .card {
+  border-color: var(--omp-border);
+  background: var(--omp-surface);
+}
+
+.app-shell .card.soft {
+  background: var(--omp-soft);
+  border-color: var(--omp-border);
+}
+
+.app-shell .btn {
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.15;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.app-shell .btn.ghost {
+  background: var(--omp-soft-blue);
+  border-color: #c8d3dc;
+  color: #40576a;
+}
+
+.app-shell .btn.ghost:hover:not(:disabled) {
+  background: #e4ebf0;
+}
+
+.app-shell .btn.primary {
+  background: var(--omp-primary);
+  border-color: var(--omp-primary);
+  color: #ffffff;
+}
+
+.app-shell .btn.primary:hover:not(:disabled) {
+  background: var(--omp-primary-hover);
+  border-color: var(--omp-primary-hover);
+}
+
+.app-shell .btn:disabled {
+  opacity: 0.52;
+}
+
+.app-shell .select,
+.app-shell .textarea,
+.app-shell input[type="text"],
+.app-shell input[type="password"] {
+  font-size: 14px;
+  color: var(--omp-text);
+  border-color: var(--omp-border);
+}
+
+.control-panel {
+  padding: 12px 14px;
+}
+
+.control-meta {
+  margin-bottom: 9px;
+  font-size: 14px;
+  color: var(--omp-muted);
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.advanced-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid var(--omp-border);
+  border-radius: 8px;
+  background: var(--omp-surface);
+  color: var(--omp-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.language-control {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+
+.control-label {
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .language-control {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .advanced-control {
+    width: 100%;
+  }
+
+  .app-shell .btn {
+    min-height: 36px;
+    font-size: 12.5px;
+    padding: 7px 10px;
+  }
+}
+
+/* ===== OMP BUTTON COLOR OVERRIDE ===== */
+
+:root {
+  --omp-btn-bg: #dbeafe;         /* 연한 파란색 */
+  --omp-btn-bg-hover: #bfdbfe;   /* hover 시 조금 진한 파란색 */
+  --omp-btn-border: #93c5fd;
+  --omp-btn-text: #1e3a8a;       /* 진한 파란 글씨 */
+  --omp-btn-disabled-bg: #e5e7eb;
+  --omp-btn-disabled-text: #94a3b8;
+}
+
+.app-shell .btn,
+.app-shell button.btn,
+button.btn {
+  background: var(--omp-btn-bg);
+  border: 1px solid var(--omp-btn-border);
+  color: var(--omp-btn-text);
+  font-size: 13px;
+  font-weight: 700;
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.app-shell .btn:hover:not(:disabled),
+.app-shell button.btn:hover:not(:disabled),
+button.btn:hover:not(:disabled) {
+  background: var(--omp-btn-bg-hover);
+  border-color: #60a5fa;
+  color: #1e40af;
+}
+
+.app-shell .btn.primary,
+button.btn.primary {
+  background: #cfe4ff;
+  border-color: #7fb3ff;
+  color: #163d7a;
+}
+
+.app-shell .btn.primary:hover:not(:disabled),
+button.btn.primary:hover:not(:disabled) {
+  background: #b9d7ff;
+  border-color: #5b9dff;
+  color: #0f2f63;
+}
+
+.app-shell .btn.ghost,
+button.btn.ghost {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.app-shell .btn.ghost:hover:not(:disabled),
+button.btn.ghost:hover:not(:disabled) {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+
+.app-shell .btn:disabled,
+button.btn:disabled {
+  background: var(--omp-btn-disabled-bg);
+  border-color: #d1d5db;
+  color: var(--omp-btn-disabled-text);
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+/* 분석하기 버튼이 눈에 잘 띄도록 */
+.app-shell .btn.primary.full,
+button.btn.primary.full {
+  background: #c7e0ff;
+  border-color: #60a5fa;
+  color: #123a75;
+  font-weight: 800;
+}
+
+.app-shell .btn.primary.full:hover:not(:disabled),
+button.btn.primary.full:hover:not(:disabled) {
+  background: #afd3ff;
+  border-color: #3b82f6;
+  color: #0f2f63;
+}
+
+/* ===== END OMP BUTTON COLOR OVERRIDE ===== */
+/* ===== END OMP UI CONSISTENCY 2026-08 ===== */

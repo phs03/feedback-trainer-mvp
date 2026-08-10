@@ -745,7 +745,7 @@ async def analyze_feedback(
     try:
         resp = openai_client.chat.completions.create(
             model="gpt-5.6-terra",
-            reasoning_effort="low",
+            extra_body={"reasoning_effort": "low"},
             response_format={"type": "json_object"},
             messages=[
                 {
