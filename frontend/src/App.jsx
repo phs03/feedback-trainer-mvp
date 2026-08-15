@@ -1667,10 +1667,14 @@ const speakerConfidenceLabel =
           )}
 
           {/* 디버깅용 Raw JSON */}
+
+{/*
           <section className="mono-panel">
             <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 8px" }}>Raw JSON (디버깅용 / for debugging)</h2>
             <pre>{JSON.stringify(result, null, 2)}</pre>
           </section>
+*/}
+
         </div>
       )}
     </div>
