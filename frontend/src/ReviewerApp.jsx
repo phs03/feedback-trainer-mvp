@@ -1,18 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 
-let API_BASE = "https://feedback-trainer-mvp-1.onrender.com";
+let API_BASE;
 
-const rawApiBase = import.meta.env.VITE_API_BASE_URL;
-
-if (typeof window !== "undefined") {
-  const host = window.location.hostname;
-
-  if (host === "localhost" || host === "127.0.0.1") {
-    API_BASE = "http://127.0.0.1:8000";
-  } else if (rawApiBase && rawApiBase.trim()) {
-    API_BASE = rawApiBase.trim().replace(/\/+$/, "");
-  }
+if (
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1")
+) {
+  // 로컬 개발 환경
+  API_BASE = "http://127.0.0.1:8000";
+} else {
+  // 인터넷 배포 환경
+  API_BASE = "https://feedback-trainer-mvp-1.onrender.com";
 }
+
+console.log("[DEBUG][ReviewerApp] API_BASE =", API_BASE);
+
+
 function getReviewerToken() {
   return sessionStorage.getItem("reviewer_token") || "";
 }
