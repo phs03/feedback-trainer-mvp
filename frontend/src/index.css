@@ -1,12 +1,36 @@
-```css
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Noto Sans KR",
+    "Apple SD Gothic Neo",
+    Arial,
+    sans-serif;
+
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light;
-  color: #000000;
-  background-color: #ffffff;
+
+  --text: #263238;
+  --muted: #667085;
+
+  --background: #f6f8fb;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+
+  --border: #d7dee8;
+
+  --blue-soft: #e8f2ff;
+  --blue: #cfe4ff;
+  --blue-hover: #b9d7ff;
+  --blue-border: #8bbcf8;
+  --blue-text: #173f73;
+
+  --danger-bg: #fff1f2;
+  --danger-border: #fecdd3;
+  --danger-text: #991b1b;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -14,463 +38,629 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+
+/* =========================================================
+   BASIC
+   ========================================================= */
+
 html,
 body,
 #root {
   margin: 0;
   min-width: 320px;
   min-height: 100%;
-  background-color: #ffffff;
-  color: #000000;
 }
 
 body {
   min-height: 100vh;
-  background-color: #ffffff;
-  color: #000000;
+  margin: 0;
+
+  background: var(--background);
+  color: var(--text);
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Noto Sans KR",
+    "Apple SD Gothic Neo",
+    Arial,
+    sans-serif;
+
+  font-size: 14px;
+  line-height: 1.55;
 }
 
-a {
-  font-weight: 500;
-  color: #1d4ed8;
-  text-decoration: inherit;
-}
 
-a:hover {
-  color: #1e40af;
-}
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-p,
-span,
-div,
-label,
-li,
-strong {
-  color: #000000;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid #9ca3af;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #ffffff;
-  color: #000000;
-  cursor: pointer;
-  transition:
-    border-color 0.25s,
-    background-color 0.25s;
-}
-
-button:hover {
-  border-color: #374151;
-  background-color: #f3f4f6;
-}
-
-button:focus,
-button:focus-visible {
-  outline: 3px solid #93c5fd;
-  outline-offset: 2px;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
+button,
 input,
 textarea,
 select {
-  font: inherit;
-  background-color: #ffffff;
-  color: #000000;
+  font-family: inherit;
 }
 
-input::placeholder,
-textarea::placeholder {
-  color: #6b7280;
+
+a {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
 }
 
-/* 전체 앱 영역 */
+a:hover {
+  color: #1d4ed8;
+}
+
+
+/* =========================================================
+   APP
+   ========================================================= */
+
 .app-shell {
   min-height: 100vh;
-  background-color: #ffffff !important;
-  color: #000000 !important;
+
+  background: var(--background);
+  color: var(--text);
+
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.55;
 }
+
 
 .app-container {
-  background-color: #ffffff;
-  color: #000000;
+  color: var(--text);
 }
 
-/* 카드 */
-.card,
-.card.soft,
-.card.white,
-.card.purple {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border: 1px solid #d1d5db;
-  box-shadow: none;
+
+/* =========================================================
+   TYPOGRAPHY
+   ========================================================= */
+
+.h1 {
+  margin-top: 0;
+
+  color: var(--text);
+
+  font-family: inherit;
+  font-weight: 750;
+  line-height: 1.25;
 }
 
-/* 제목과 본문 */
-.h1,
-.h2,
-.h3,
+
+.h2 {
+  color: var(--text);
+
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+
+.h3 {
+  color: var(--text);
+
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+
 .label {
-  color: #000000 !important;
+  color: var(--text);
+
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
 }
+
+
+p,
+li,
+label,
+span,
+div {
+  font-family: inherit;
+}
+
 
 .p-muted,
 .muted,
 .small,
-.hint-text {
-  color: #374151 !important;
+.hint-text,
+.status {
+  color: var(--muted);
+
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-/* 입력창 */
+
+/* =========================================================
+   CARD
+   ========================================================= */
+
+.card,
+.card.white,
+.card.purple {
+  background: var(--surface);
+  color: var(--text);
+
+  border: 1px solid var(--border);
+
+  box-shadow: none;
+}
+
+
+.card.soft {
+  background: var(--surface-soft);
+  color: var(--text);
+
+  border: 1px solid var(--border);
+
+  box-shadow: none;
+}
+
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+button,
+.btn {
+  box-sizing: border-box;
+
+  min-height: 34px;
+
+  padding: 6px 10px;
+
+  border: 1px solid var(--blue-border);
+  border-radius: 8px;
+
+  background: var(--blue-soft);
+  color: var(--blue-text);
+
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.2;
+
+  white-space: nowrap;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.05s ease;
+}
+
+
+button:hover:not(:disabled),
+.btn:hover:not(:disabled) {
+  background: var(--blue-hover);
+  border-color: #60a5fa;
+}
+
+
+button:active:not(:disabled),
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+
+button:focus-visible,
+.btn:focus-visible {
+  outline: 3px solid #bfdbfe;
+  outline-offset: 2px;
+}
+
+
+.btn.primary {
+  background: var(--blue);
+  border-color: #7fb3f5;
+  color: #123a6b;
+}
+
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--blue-hover);
+  border-color: #60a5fa;
+}
+
+
+.btn.ghost {
+  background: #f0f6ff;
+  border-color: #bfd8f6;
+  color: #315b88;
+}
+
+
+.btn.ghost:hover:not(:disabled) {
+  background: #deedff;
+  border-color: #93c5fd;
+}
+
+
+.btn.primary.full {
+  width: 100%;
+
+  min-height: 36px;
+
+  background: #c7e0ff;
+  border-color: #60a5fa;
+
+  color: #123a6b;
+
+  font-size: 13px;
+  font-weight: 800;
+}
+
+
+.btn.primary.full:hover:not(:disabled) {
+  background: #afd3ff;
+  border-color: #3b82f6;
+}
+
+
+button:disabled,
+.btn:disabled {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+
+  color: #94a3b8;
+
+  opacity: 1;
+
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   FLEX ROWS
+   ========================================================= */
+
+.row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+
+  gap: 8px;
+}
+
+
+/* =========================================================
+   FORM INPUTS
+   ========================================================= */
+
+input,
+textarea,
+select,
 .textarea,
 .select {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border: 1px solid #9ca3af;
+  box-sizing: border-box;
+
+  background: var(--surface);
+  color: var(--text);
+
+  border: 1px solid #b8c3d1;
+  border-radius: 8px;
+
+  font-family: inherit;
+  font-size: 14px;
 }
 
-/* transcript segment */
-.seg {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border: 1px solid #d1d5db;
+
+input,
+select {
+  min-height: 34px;
 }
+
+
+textarea,
+.textarea {
+  line-height: 1.5;
+}
+
+
+input:focus,
+textarea:focus,
+select:focus,
+.textarea:focus,
+.select:focus {
+  border-color: #7fb3f5;
+
+  outline: 3px solid #e0edff;
+  outline-offset: 0;
+}
+
+
+input::placeholder,
+textarea::placeholder {
+  color: #8a95a5;
+}
+
+
+/* =========================================================
+   TRANSCRIPT
+   ========================================================= */
+
+.seg {
+  background: var(--surface);
+  color: var(--text);
+
+  border: 1px solid var(--border);
+}
+
 
 .seg-head {
-  color: #000000 !important;
+  color: var(--text);
 }
 
-/* 역할별 컬럼 */
+
 .col {
-  background-color: #ffffff !important;
-  color: #000000 !important;
+  background: var(--surface);
+  color: var(--text);
 }
 
-/* 태그 */
+
+/* =========================================================
+   TAGS
+   ========================================================= */
+
 .tag {
-  background-color: #f3f4f6 !important;
-  color: #000000 !important;
-  border: 1px solid #d1d5db;
+  background: #eef3f8;
+  color: #334155;
+
+  border: 1px solid #d7dee8;
+
+  font-size: 12px;
 }
 
-/* 상태 메시지 */
-.status {
-  color: #000000 !important;
-}
 
-/* 오류 메시지 */
-.err {
-  background-color: #fff1f2;
-  color: #991b1b !important;
-  border: 1px solid #fecdd3;
-}
-
-/* Raw JSON */
-.mono-panel {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border: 1px solid #d1d5db;
-}
-
-.mono-panel pre {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-}
-
-/* 코드 표시 */
-.code {
-  background-color: #f3f4f6 !important;
-  color: #000000 !important;
-  border: 1px solid #d1d5db;
-}
-
-/* 스크롤 영역 */
-.scroll {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-}
-
-/* 진행 막대 바깥 영역 */
-.progress {
-  background-color: #e5e7eb;
-}
-
-/* 체크박스 */
-input[type="checkbox"] {
-  accent-color: #2563eb;
-}
-```
-
-/* ===== OMP UI CONSISTENCY 2026-08 ===== */
-:root {
-  --omp-text: #263238;
-  --omp-muted: #667085;
-  --omp-border: #d8dee8;
-  --omp-bg: #f5f7fa;
-  --omp-surface: #ffffff;
-  --omp-soft: #f8fafc;
-  --omp-primary: #526d82;
-  --omp-primary-hover: #40576a;
-  --omp-soft-blue: #eef3f7;
-}
-
-body {
-  background: var(--omp-bg);
-  color: var(--omp-text);
-}
-
-.app-shell {
-  color: var(--omp-text);
-  font-size: 14px;
-  line-height: 1.55;
-}
-
-.app-shell .p-muted,
-.app-shell .small,
-.app-shell .muted,
-.app-shell .hint-text,
-.app-shell .status,
-.app-shell .label {
-  font-size: 14px;
-  line-height: 1.55;
-}
-
-.app-shell .label {
-  font-weight: 700;
-  color: var(--omp-text);
-}
-
-.app-shell .h2 {
-  font-size: 17px;
-  line-height: 1.35;
-  font-weight: 700;
-  color: var(--omp-text);
-}
-
-.app-shell .h3 {
-  font-size: 15px;
-  line-height: 1.4;
-  font-weight: 700;
-  color: var(--omp-text);
-}
-
-.app-shell .card {
-  border-color: var(--omp-border);
-  background: var(--omp-surface);
-}
-
-.app-shell .card.soft {
-  background: var(--omp-soft);
-  border-color: var(--omp-border);
-}
-
-.app-shell .btn {
-  min-height: 36px;
-  padding: 7px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  line-height: 1.15;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.app-shell .btn.ghost {
-  background: var(--omp-soft-blue);
-  border-color: #c8d3dc;
-  color: #40576a;
-}
-
-.app-shell .btn.ghost:hover:not(:disabled) {
-  background: #e4ebf0;
-}
-
-.app-shell .btn.primary {
-  background: var(--omp-primary);
-  border-color: var(--omp-primary);
-  color: #ffffff;
-}
-
-.app-shell .btn.primary:hover:not(:disabled) {
-  background: var(--omp-primary-hover);
-  border-color: var(--omp-primary-hover);
-}
-
-.app-shell .btn:disabled {
-  opacity: 0.52;
-}
-
-.app-shell .select,
-.app-shell .textarea,
-.app-shell input[type="text"],
-.app-shell input[type="password"] {
-  font-size: 14px;
-  color: var(--omp-text);
-  border-color: var(--omp-border);
-}
+/* =========================================================
+   ADVANCED MODE
+   ========================================================= */
 
 .control-panel {
-  padding: 12px 14px;
+  padding: 11px 13px;
 }
 
-.control-meta {
-  margin-bottom: 9px;
-  font-size: 14px;
-  color: var(--omp-muted);
-}
 
 .control-row {
   display: flex;
   align-items: center;
-  gap: 18px;
   flex-wrap: wrap;
+
+  gap: 10px;
 }
+
 
 .advanced-control {
   display: inline-flex;
   align-items: center;
+
   gap: 7px;
-  min-height: 36px;
-  padding: 7px 11px;
-  border: 1px solid var(--omp-border);
+
+  min-height: 34px;
+
+  padding: 5px 9px;
+
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--omp-surface);
-  color: var(--omp-text);
-  font-size: 14px;
+
+  background: var(--surface);
+  color: var(--text);
+
+  font-size: 13px;
   font-weight: 600;
 }
 
+
+/*
+  언어 관련 기능은 코드에서 유지하지만
+  현재 UI에서는 보이지 않게 함.
+*/
+
+.control-meta,
 .language-control {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 14px;
+  display: none !important;
 }
+
 
 .control-label {
   font-weight: 700;
 }
 
+
+/* =========================================================
+   CHECKBOX
+   ========================================================= */
+
+input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+
+  accent-color: #6096d3;
+}
+
+
+/* =========================================================
+   ERROR
+   ========================================================= */
+
+.err {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+
+  border: 1px solid var(--danger-border);
+}
+
+
+/* =========================================================
+   RAW / CODE
+   ========================================================= */
+
+.mono-panel {
+  background: var(--surface);
+  color: var(--text);
+
+  border: 1px solid var(--border);
+}
+
+
+.mono-panel pre {
+  background: var(--surface);
+  color: var(--text);
+}
+
+
+.code {
+  background: #f1f5f9;
+  color: var(--text);
+
+  border: 1px solid var(--border);
+}
+
+
+.scroll {
+  background: var(--surface);
+  color: var(--text);
+}
+
+
+/* =========================================================
+   PROGRESS
+   ========================================================= */
+
+.progress {
+  background: #e5e7eb;
+}
+
+
+/* =========================================================
+   TABLET / NARROW SCREEN
+   ========================================================= */
+
 @media (max-width: 760px) {
-  .language-control {
-    margin-left: 0;
-    width: 100%;
+
+  .app-shell {
+    font-size: 14px;
   }
+
+
+  .h2 {
+    font-size: 16px;
+  }
+
+
+  .h3 {
+    font-size: 14px;
+  }
+
+
+  button,
+  .btn {
+    min-height: 33px;
+
+    padding: 6px 9px;
+
+    font-size: 12px;
+
+    flex: 0 1 auto;
+  }
+
+
+  .btn.primary.full {
+    min-height: 35px;
+    font-size: 12.5px;
+  }
+
+
+  .row,
+  .control-row {
+    gap: 6px;
+  }
+
 
   .advanced-control {
-    width: 100%;
-  }
+    min-height: 33px;
 
-  .app-shell .btn {
-    min-height: 36px;
+    padding: 5px 8px;
+
     font-size: 12.5px;
-    padding: 7px 10px;
   }
 }
 
-/* ===== OMP BUTTON COLOR OVERRIDE ===== */
 
-:root {
-  --omp-btn-bg: #dbeafe;         /* 연한 파란색 */
-  --omp-btn-bg-hover: #bfdbfe;   /* hover 시 조금 진한 파란색 */
-  --omp-btn-border: #93c5fd;
-  --omp-btn-text: #1e3a8a;       /* 진한 파란 글씨 */
-  --omp-btn-disabled-bg: #e5e7eb;
-  --omp-btn-disabled-text: #94a3b8;
+/* =========================================================
+   SMARTPHONE
+   ========================================================= */
+
+@media (max-width: 480px) {
+
+  body,
+  .app-shell {
+    font-size: 13.5px;
+  }
+
+
+  button,
+  .btn {
+    min-height: 32px;
+
+    padding: 5px 8px;
+
+    font-size: 11.5px;
+
+    border-radius: 7px;
+  }
+
+
+  .btn.primary.full {
+    min-height: 35px;
+
+    font-size: 12px;
+  }
+
+
+  .label,
+  .p-muted,
+  .muted,
+  .small,
+  .hint-text,
+  .status {
+    font-size: 13px;
+  }
+
+
+  .row {
+    gap: 5px;
+  }
+
+
+  .control-panel {
+    padding: 9px 10px;
+  }
+
+
+  .advanced-control {
+    width: auto;
+
+    min-height: 32px;
+
+    padding: 5px 7px;
+
+    font-size: 12px;
+  }
+
+
+  input,
+  textarea,
+  select,
+  .textarea,
+  .select {
+    font-size: 13px;
+  }
 }
-
-.app-shell .btn,
-.app-shell button.btn,
-button.btn {
-  background: var(--omp-btn-bg);
-  border: 1px solid var(--omp-btn-border);
-  color: var(--omp-btn-text);
-  font-size: 13px;
-  font-weight: 700;
-  min-height: 36px;
-  padding: 7px 12px;
-  border-radius: 8px;
-  line-height: 1.15;
-  white-space: nowrap;
-}
-
-.app-shell .btn:hover:not(:disabled),
-.app-shell button.btn:hover:not(:disabled),
-button.btn:hover:not(:disabled) {
-  background: var(--omp-btn-bg-hover);
-  border-color: #60a5fa;
-  color: #1e40af;
-}
-
-.app-shell .btn.primary,
-button.btn.primary {
-  background: #cfe4ff;
-  border-color: #7fb3ff;
-  color: #163d7a;
-}
-
-.app-shell .btn.primary:hover:not(:disabled),
-button.btn.primary:hover:not(:disabled) {
-  background: #b9d7ff;
-  border-color: #5b9dff;
-  color: #0f2f63;
-}
-
-.app-shell .btn.ghost,
-button.btn.ghost {
-  background: #eff6ff;
-  border-color: #bfdbfe;
-  color: #1d4ed8;
-}
-
-.app-shell .btn.ghost:hover:not(:disabled),
-button.btn.ghost:hover:not(:disabled) {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  color: #1e40af;
-}
-
-.app-shell .btn:disabled,
-button.btn:disabled {
-  background: var(--omp-btn-disabled-bg);
-  border-color: #d1d5db;
-  color: var(--omp-btn-disabled-text);
-  opacity: 1;
-  cursor: not-allowed;
-}
-
-/* 분석하기 버튼이 눈에 잘 띄도록 */
-.app-shell .btn.primary.full,
-button.btn.primary.full {
-  background: #c7e0ff;
-  border-color: #60a5fa;
-  color: #123a75;
-  font-weight: 800;
-}
-
-.app-shell .btn.primary.full:hover:not(:disabled),
-button.btn.primary.full:hover:not(:disabled) {
-  background: #afd3ff;
-  border-color: #3b82f6;
-  color: #0f2f63;
-}
-
-/* ===== END OMP BUTTON COLOR OVERRIDE ===== */
-/* ===== END OMP UI CONSISTENCY 2026-08 ===== */

@@ -745,8 +745,8 @@ const speakerConfidenceLabel =
 
       <h1 className="h1">One-Minute Preceptor 피드백 코칭</h1>
       <p className="p-muted">
-        지도전문의와 전공의의 짧은 임상 피드백 대화를 분석하여
-        One-Minute Preceptor의 5개 microskill을 평가하고,
+        임상에서 교육을 위한 피드백 대화를 분석,
+        One-Minute Preceptor microskill로 평가하여,
         다음 피드백에 활용할 수 있는 구체적인 코칭을 제공합니다.
       </p>
 
@@ -848,15 +848,15 @@ const speakerConfidenceLabel =
 
       {/* 🔹 1. 음성 녹음 영역 */}
       <section className="card">
-        <h2 className="h2">1. 음성 녹음하기 (Record audio)</h2>
+        <h2 className="h2">1. 녹음하기</h2>
         <p className="small" style={{ marginBottom: 10 }}>
-          지도전문의-전공의 피드백 장면을 이 브라우저에서 바로 녹음합니다.
-          (녹음 종료 후 재생 및 STT + 화자 구분으로 텍스트로 변환할 수 있습니다.)
+          지도전문의-전공의 피드백 장면을 녹음합니다.
+          (녹음 종료 후 재생 및 STT + 화자 구분으로 텍스트로 변환)
         </p>
 
         <div className="row" style={{ marginBottom: 8 }}>
           <button type="button" onClick={handleStartRecording} disabled={isRecording} className="btn ghost">
-            🎙 녹음 시작 (Start recording)
+            🎙 녹음 시작 (Recording)
           </button>
           <button type="button" onClick={handleStopRecording} disabled={!isRecording} className="btn ghost">
             ⏹ 녹음 종료 (Stop)
@@ -870,20 +870,20 @@ const speakerConfidenceLabel =
             disabled={!audioChunksRef.current.length}
             className="btn ghost"
           >
-            ✨ 텍스트 변환 (Convert to text with speakers)
+            ✨ 변환 (Convert to text)
           </button>
         </div>
 
         {recordingStatus && <p className="status">{recordingStatus}</p>}
 
-        {/* 🔹 Advanced Mode + 코칭 언어 선택 */}
-        <div className="card soft control-panel" style={{ marginTop: 12 }}>
-          {detectedLanguage && (
-            <div className="control-meta">
-              <strong>자동 감지된 언어 (Detected language):</strong>{" "}
-              {renderDetectedLanguage(detectedLanguage)}
-            </div>
-          )}
+{/* 🔹 Advanced Mode + 코칭 언어 선택 */}
+<div className="card soft control-panel" style={{ marginTop: 12 }}>
+  {detectedLanguage && (
+    <div className="control-meta" style={{ display: "none" }}>
+      <strong>자동 감지된 언어 (Detected language):</strong>{" "}
+      {renderDetectedLanguage(detectedLanguage)}
+    </div>
+  )}
 
           <div className="control-row">
             <label className="advanced-control">
@@ -892,7 +892,7 @@ const speakerConfidenceLabel =
                 checked={advancedMode}
                 onChange={(e) => setAdvancedMode(e.target.checked)}
               />
-              <span>Advanced Mode: 화자 역할 직접 지정</span>
+              <span>화자 역할 직접 지정</span>
             </label>
 
             <div className="language-control">
@@ -1136,53 +1136,68 @@ const speakerConfidenceLabel =
         </section>
       )}
 
-      {/* 🔹 2. 텍스트 입력 + 분석 */}
-      <form onSubmit={handleAnalyze}>
-        <div
-          className="row"
-          style={{
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 6,
-          }}
-        >
-          <label htmlFor="transcript" className="label" style={{ margin: 0 }}>
-            2. 피드백 대화 transcript
-          </label>
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              padding: "4px 8px",
-              borderRadius: 999,
-              background: "#eef2ff",
-              color: "#3730a3",
-              border: "1px solid #c7d2fe",
-            }}
-          >
-            확인 후 직접 수정 가능
-          </span>
-        </div>
-        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
-          역할별 발언을 확인한 뒤 오인식된 단어나 문장을 직접 수정하고 분석할 수 있습니다.
-        </div>
-        <textarea
-          id="transcript"
-          value={transcript}
-          onChange={(e) => setTranscript(e.target.value)}
-          rows={6}
-          className={`textarea ${error ? "error" : ""}`}
-          style={{
-            display: "block",
-            width: "100%",
-            maxWidth: "100%",
-            minHeight: 130,
-            height: "auto",
-            boxSizing: "border-box",
-            resize: "vertical",
-            overflow: "auto",
-          }}
-        />
+{/* 🔹 2. 텍스트 입력 + 분석 */}
+<form onSubmit={handleAnalyze}>
+  <div
+    className="row"
+    style={{
+      alignItems: "center",
+      marginBottom: 6,
+      gap: 8,
+      flexWrap: "wrap",
+    }}
+  >
+    <label htmlFor="transcript" className="h2" style={{ margin: 0 }}>
+      2. 대화 내용
+    </label>
+  </div>
+
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 6,
+      flexWrap: "wrap",
+    }}
+  >
+    <div className="muted">
+      역할별 발언을 확인한 뒤 오인식된 단어나 문장을 직접 수정하고 분석할 수 있습니다.
+    </div>
+
+    <span
+      style={{
+        fontSize: 12,
+        fontWeight: 700,
+        padding: "5px 10px",
+        borderRadius: 7,
+        background: "#e8f2ff",
+        color: "#173f73",
+        border: "1px solid #93c5fd",
+        whiteSpace: "nowrap",
+      }}
+    >
+      수정
+    </span>
+  </div>
+
+  <textarea
+    id="transcript"
+    value={transcript}
+    onChange={(e) => setTranscript(e.target.value)}
+    rows={6}
+    className={`textarea ${error ? "error" : ""}`}
+    style={{
+      display: "block",
+      width: "100%",
+      maxWidth: "100%",
+      minHeight: 130,
+      height: "auto",
+      boxSizing: "border-box",
+      resize: "vertical",
+      overflow: "auto",
+    }}
+  />
 
         <div className="row" style={{ marginTop: 12 }}>
           <button
@@ -1190,7 +1205,7 @@ const speakerConfidenceLabel =
             disabled={loading || !transcript.trim()}
             className={`btn primary full`}
           >
-            {loading ? "분석 중... (Analyzing)" : "피드백 분석하기 (Analyze feedback)"}
+            {loading ? "분석 중... (Analyzing)" : "피드백 분석 (Analyze feedback)"}
           </button>
         </div>
       </form>
