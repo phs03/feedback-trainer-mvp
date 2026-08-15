@@ -29,27 +29,27 @@ const LANGUAGE_LABELS = {
 
 const OMP_LABELS = {
   get_commitment: {
-    title: "1. 판단 유도",
+    title: "1. 판단 유도 (Get a commitment)",
     description: "전공의가 자신의 진단이나 판단을 먼저 말하도록 유도함",
   },
 
   probe_for_supporting_evidence: {
-    title: "2. 근거 탐색",
+    title: "2. 근거 탐색 (Probe for supporting evidence)",
     description: "전공의 판단의 근거와 사고 과정을 질문함",
   },
 
   teach_general_rules: {
-    title: "3. 일반 원칙 교육",
+    title: "3. 일반 원칙 교육 (Teach general rules)",
     description: "이번 사례에 적용할 수 있는 일반적인 임상 원칙을 설명함",
   },
 
   reinforce_what_was_done_right: {
-    title: "4. 잘한 점 강화",
+    title: "4. 잘한 점 강화 (Reinforce what was done right)",
     description: "잘한 행동을 구체적으로 언급하고 강화함",
   },
 
   correct_mistakes: {
-    title: "5. 개선점 교정",
+    title: "5. 개선점 교정 (Correct mistakes)",
     description: "개선할 행동을 구체적으로 제시함",
   },
 
