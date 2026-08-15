@@ -33,7 +33,7 @@ const OMP_LABELS = {
     description: "전공의가 자신의 진단이나 판단을 먼저 말하도록 유도함",
   },
 
-  probe_for_supporting_evidence: {
+  probe_for_evidence: {
     title: "2. 근거 탐색 (Probe for supporting evidence)",
     description: "전공의 판단의 근거와 사고 과정을 질문함",
   },
