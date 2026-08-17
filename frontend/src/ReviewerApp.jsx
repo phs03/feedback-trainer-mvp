@@ -67,6 +67,11 @@ function ReviewerApp() {
   const [error, setError] = useState("");
   const [authChecking, setAuthChecking] = useState(true);
 
+  const [activeView, setActiveView] = useState("rating");
+  const [researchOverview, setResearchOverview] = useState(null);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [overviewError, setOverviewError] = useState("");
+
   const currentPending = pendingSessions[0] || null;
 
   const selectedCompleted =
@@ -245,6 +250,82 @@ function ReviewerApp() {
     }
   }, [mode, selectedCompletedId]);
 
+  async function loadResearchOverview() {
+    setOverviewLoading(true);
+    setOverviewError("");
+
+    try {
+      const raterIds = ["RATER-001", "RATER-002"];
+
+      const raterResults = await Promise.all(
+        raterIds.map(async (rid) => {
+          const [pendingData, completedData] = await Promise.all([
+            fetchSessionSet(rid, false),
+            fetchSessionSet(rid, true),
+          ]);
+
+          return {
+            raterId: rid,
+            pending: Array.isArray(pendingData.items) ? pendingData.items : [],
+            completed: Array.isArray(completedData.items)
+              ? completedData.items
+              : [],
+          };
+        })
+      );
+
+      const sessionMap = new Map();
+
+      for (const rr of raterResults) {
+        for (const item of [...rr.pending, ...rr.completed]) {
+          if (!item?.encounter_id) continue;
+
+          if (!sessionMap.has(item.encounter_id)) {
+            sessionMap.set(item.encounter_id, {
+              encounter_id: item.encounter_id,
+              rater1_completed: false,
+              rater2_completed: false,
+            });
+          }
+
+          const row = sessionMap.get(item.encounter_id);
+          const isCompleted = rr.completed.some(
+            (x) => x.encounter_id === item.encounter_id
+          );
+
+          if (rr.raterId === "RATER-001") row.rater1_completed = isCompleted;
+          if (rr.raterId === "RATER-002") row.rater2_completed = isCompleted;
+        }
+      }
+
+      const rows = Array.from(sessionMap.values()).sort((a, b) =>
+        String(b.encounter_id).localeCompare(String(a.encounter_id))
+      );
+
+      setResearchOverview({
+        target: 60,
+        total: rows.length,
+        bothCompleted: rows.filter(
+          (x) => x.rater1_completed && x.rater2_completed
+        ).length,
+        oneCompleted: rows.filter(
+          (x) => x.rater1_completed !== x.rater2_completed
+        ).length,
+        noneCompleted: rows.filter(
+          (x) => !x.rater1_completed && !x.rater2_completed
+        ).length,
+        rows,
+      });
+    } catch (err) {
+      console.error(err);
+      setOverviewError(
+        err.message || "연구 데이터 현황을 불러오지 못했습니다."
+      );
+    } finally {
+      setOverviewLoading(false);
+    }
+  }
+
   async function saveRating() {
     if (!current) {
       setError("평가할 세션이 없습니다.");
@@ -359,6 +440,271 @@ function ReviewerApp() {
         </button>
       </div>
 
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          marginBottom: 18,
+          borderBottom: "1px solid #e5e7eb",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveView("rating")}
+          style={{
+            padding: "10px 14px",
+            border: 0,
+            borderBottom:
+              activeView === "rating"
+                ? "3px solid #2563eb"
+                : "3px solid transparent",
+            background: "transparent",
+            fontWeight: activeView === "rating" ? 700 : 400,
+            cursor: "pointer",
+          }}
+        >
+          평가하기
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveView("status");
+            loadResearchOverview();
+          }}
+          style={{
+            padding: "10px 14px",
+            border: 0,
+            borderBottom:
+              activeView === "status"
+                ? "3px solid #2563eb"
+                : "3px solid transparent",
+            background: "transparent",
+            fontWeight: activeView === "status" ? 700 : 400,
+            cursor: "pointer",
+          }}
+        >
+          연구 데이터 현황
+        </button>
+      </div>
+
+      {activeView === "status" && (
+        <section
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            padding: 16,
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+              marginBottom: 12,
+            }}
+          >
+            <div>
+              <h2 style={{ margin: 0 }}>연구 데이터 현황</h2>
+              <p style={{ color: "#64748b", fontSize: 13, marginBottom: 0 }}>
+                평가 독립성을 유지하기 위해 AI 점수와 다른 평가자의 실제
+                점수는 표시하지 않습니다.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={loadResearchOverview}
+              disabled={overviewLoading}
+              style={{ padding: "8px 12px" }}
+            >
+              {overviewLoading ? "불러오는 중..." : "새로고침"}
+            </button>
+          </div>
+
+          {overviewError && (
+            <div
+              style={{
+                padding: 10,
+                background: "#fee2e2",
+                color: "#991b1b",
+                marginBottom: 12,
+              }}
+            >
+              {overviewError}
+            </div>
+          )}
+
+          {researchOverview && (
+            <>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                  gap: 10,
+                  marginBottom: 16,
+                }}
+              >
+                {[
+                  ["목표 세션", researchOverview.target],
+                  ["현재 수집", researchOverview.total],
+                  ["두 평가자 완료", researchOverview.bothCompleted],
+                  ["평가 진행중", researchOverview.oneCompleted],
+                  ["두 평가자 대기", researchOverview.noneCompleted],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    style={{
+                      padding: 12,
+                      background: "#f8fafc",
+                      borderRadius: 6,
+                    }}
+                  >
+                    <div style={{ color: "#64748b", fontSize: 12 }}>
+                      {label}
+                    </div>
+                    <div style={{ fontSize: 22, fontWeight: 700 }}>
+                      {value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ marginBottom: 18 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: 12,
+                    color: "#64748b",
+                    marginBottom: 6,
+                  }}
+                >
+                  <span>자료 수집 진행률</span>
+                  <span>
+                    {researchOverview.total} / {researchOverview.target} (
+                    {Math.round(
+                      (researchOverview.total / researchOverview.target) * 1000
+                    ) / 10}
+                    %)
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    height: 8,
+                    background: "#e5e7eb",
+                    borderRadius: 999,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        (researchOverview.total / researchOverview.target) * 100
+                      )}%`,
+                      height: "100%",
+                      background: "#2563eb",
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div
+                style={{
+                  overflowX: "auto",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 8,
+                }}
+              >
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    minWidth: 680,
+                    fontSize: 13,
+                  }}
+                >
+                  <thead>
+                    <tr style={{ background: "#f8fafc" }}>
+                      <th style={{ textAlign: "left", padding: 10 }}>
+                        Session ID
+                      </th>
+                      <th style={{ textAlign: "center", padding: 10 }}>
+                        RATER-001
+                      </th>
+                      <th style={{ textAlign: "center", padding: 10 }}>
+                        RATER-002
+                      </th>
+                      <th style={{ textAlign: "center", padding: 10 }}>
+                        상태
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {researchOverview.rows.map((row) => {
+                      const both =
+                        row.rater1_completed && row.rater2_completed;
+                      const one =
+                        row.rater1_completed !== row.rater2_completed;
+
+                      return (
+                        <tr
+                          key={row.encounter_id}
+                          style={{ borderTop: "1px solid #e5e7eb" }}
+                        >
+                          <td style={{ padding: 10 }}>
+                            <code>{row.encounter_id}</code>
+                          </td>
+                          <td style={{ textAlign: "center", padding: 10 }}>
+                            {row.rater1_completed ? "✅ 완료" : "⏳ 대기"}
+                          </td>
+                          <td style={{ textAlign: "center", padding: 10 }}>
+                            {row.rater2_completed ? "✅ 완료" : "⏳ 대기"}
+                          </td>
+                          <td
+                            style={{
+                              textAlign: "center",
+                              padding: 10,
+                              fontWeight: 700,
+                              color: both
+                                ? "#047857"
+                                : one
+                                ? "#92400e"
+                                : "#64748b",
+                            }}
+                          >
+                            {both ? "완료" : one ? "진행중" : "대기"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {researchOverview.rows.length === 0 && (
+                <div
+                  style={{
+                    padding: 18,
+                    textAlign: "center",
+                    color: "#64748b",
+                  }}
+                >
+                  아직 수집된 연구 세션이 없습니다.
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      )}
+
+      <div style={{ display: activeView === "rating" ? "block" : "none" }}>
       <section
         style={{
           border: "1px solid #ddd",
@@ -767,6 +1113,7 @@ function ReviewerApp() {
           </section>
         </>
       )}
+      </div>
     </div>
   );
 }
